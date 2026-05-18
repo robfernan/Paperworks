@@ -86,7 +86,7 @@ const FeaturesShowcase = () => {
         {/* Main Features */}
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold mb-6">
-            Why DocSuite Beats
+            Why Paperworks Beats
             <span className="block bg-gradient-hero bg-clip-text text-transparent">
               Every Other Platform
             </span>
@@ -144,7 +144,7 @@ const FeaturesShowcase = () => {
             </h3>
             <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
               Join the revolution in document creation. Start with our free tier and 
-              see why professionals choose DocSuite over expensive alternatives.
+              see why professionals choose Paperworks over expensive alternatives.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">

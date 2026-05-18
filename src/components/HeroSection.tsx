@@ -30,9 +30,11 @@ const HeroSection = () => {
         </p>
         
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Button size="lg" className="bg-gradient-primary hover:shadow-glow transition-all duration-300 group">
-            Get Started Free
-            <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+          <Button asChild size="lg" className="bg-gradient-primary hover:shadow-glow transition-all duration-300 group">
+            <a href="#tools">
+              Get Started Free
+              <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+            </a>
           </Button>
           
           <Button variant="outline" size="lg" className="border-2 hover:border-primary hover:text-primary transition-colors">

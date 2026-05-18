@@ -12,40 +12,16 @@ const Header = () => {
           </div>
           <div>
             <h1 className="text-xl font-bold bg-gradient-hero bg-clip-text text-transparent">
-              DocSuite
+              Paperworks
             </h1>
             <p className="text-xs text-muted-foreground -mt-1">Professional Documents</p>
           </div>
         </div>
 
-        {/* Navigation - Desktop */}
-        <nav className="hidden md:flex items-center gap-8">
-          <a href="#tools" className="text-sm font-medium hover:text-primary transition-colors">
-            Tools
-          </a>
-          <a href="#templates" className="text-sm font-medium hover:text-primary transition-colors">
-            Templates
-          </a>
-          <a href="#pricing" className="text-sm font-medium hover:text-primary transition-colors">
-            Pricing
-          </a>
-          <a href="#help" className="text-sm font-medium hover:text-primary transition-colors">
-            Help
-          </a>
-        </nav>
-
         {/* Actions */}
         <div className="flex items-center gap-4">
-          <Button variant="ghost" className="hidden sm:flex">
-            Sign In
-          </Button>
-          <Button className="bg-gradient-primary hover:shadow-glow transition-all">
-            Get Started
-          </Button>
-          
-          {/* Mobile menu button */}
-          <Button variant="ghost" size="sm" className="md:hidden">
-            <Menu className="w-5 h-5" />
+          <Button asChild className="bg-gradient-primary hover:shadow-glow transition-all">
+            <a href="#tools">Get Started</a>
           </Button>
         </div>
       </div>

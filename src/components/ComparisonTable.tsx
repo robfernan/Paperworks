@@ -4,7 +4,7 @@ import { Check, X, Crown, Zap } from "lucide-react";
 
 const competitors = [
   {
-    name: "DocSuite",
+    name: "Paperworks",
     logo: "DS", 
     price: "Free",
     priceNote: "Forever",
@@ -153,9 +153,11 @@ const ComparisonTable = () => {
                     <div className="text-2xl font-bold text-primary mb-1">{competitor.price}</div>
                     <div className="text-sm text-muted-foreground mb-4">{competitor.priceNote}</div>
                     {competitor.isPrimary && (
-                      <Button className="w-full bg-gradient-primary hover:shadow-glow transition-all">
-                        <Zap className="w-4 h-4 mr-2" />
-                        Get Started
+                      <Button asChild className="w-full bg-gradient-primary hover:shadow-glow transition-all">
+                        <a href="#tools">
+                          <Zap className="w-4 h-4 mr-2" />
+                          Get Started
+                        </a>
                       </Button>
                     )}
                   </CardContent>
@@ -192,9 +194,11 @@ const ComparisonTable = () => {
                     DocSuite gives you everything the expensive competitors offer, plus exclusive AI features 
                     they don't have - all starting completely free.
                   </p>
-                  <Button size="lg" className="bg-gradient-primary hover:shadow-glow transition-all">
-                    Start Building for Free
-                    <Zap className="w-4 h-4 ml-2" />
+                  <Button asChild size="lg" className="bg-gradient-primary hover:shadow-glow transition-all">
+                    <a href="#tools">
+                      Start Building for Free
+                      <Zap className="w-4 h-4 ml-2" />
+                    </a>
                   </Button>
                 </CardContent>
               </Card>
