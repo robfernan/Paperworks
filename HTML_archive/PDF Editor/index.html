@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Editor - Add, Delete, Rotate Pages & Add Text</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔧 PDF Editor</h1>
+            <p>Upload, edit, rotate pages, add text, and download your PDF</p>
+        </header>
+
+        <main>
+            <!-- File Upload Section -->
+            <section class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-content">
+                        <div class="upload-icon">📄</div>
+                        <h3>Drop your PDF(s) here or click to browse</h3>
+                        <p>Supports multiple PDF files up to 10MB each</p>
+                        <div class="file-input-wrapper">
+                            <button type="button" class="btn btn-primary" id="browseFilesBtn">Browse Files</button>
+                            <!-- Real input sits on top (opacity 0) so user click is a genuine user activation -->
+                            <input type="file" id="fileInput" accept=".pdf" multiple class="file-input-overlay">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Control Panel -->
+            <section class="controls" id="controlPanel" style="display: none;">
+                <div class="control-group">
+                    <h3>� File Operations</h3>
+                    <div class="control-buttons">
+                        <button type="button" class="btn btn-info" id="addMorePDFsBtn">
+                            <span>📎</span> Add More PDFs
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="clearAllBtn">
+                            <span>🗑️</span> Clear All
+                        </button>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <h3>�🛠️ Edit Tools</h3>
+                    <div class="control-buttons">
+                        <button type="button" class="btn btn-secondary" id="addTextBtn" title="Add text overlay to selected page">
+                            <span>✏️</span> Add Text
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="addPageBtn" title="Insert a blank page at the end">
+                            <span>📄</span> Add Blank Page
+                        </button>
+                        <button type="button" class="btn btn-danger" id="deleteSelectedBtn" disabled title="Delete selected pages">
+                            <span>🗑️</span> Delete Selected
+                        </button>
+                        <button type="button" class="btn btn-warning" id="rotateSelectedBtn" disabled title="Rotate selected pages 90° clockwise">
+                            <span>🔄</span> Rotate Selected
+                        </button>
+                        <button type="button" class="btn btn-purple" id="duplicateSelectedBtn" disabled title="Duplicate selected pages">
+                            <span>📋</span> Duplicate Selected
+                        </button>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <h3>🎯 Page Tools</h3>
+                    <div class="control-buttons">
+                        <button type="button" class="btn btn-secondary" id="undoBtn" disabled>
+                            <span>↶</span> Undo
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="redoBtn" disabled>
+                            <span>↷</span> Redo
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="selectAllBtn">
+                            <span>☑️</span> Select All
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="selectNoneBtn">
+                            <span>☐</span> Select None
+                        </button>
+                        <button type="button" class="btn btn-info" id="reverseOrderBtn">
+                            <span>🔃</span> Reverse Order
+                        </button>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <button type="button" class="btn btn-success" id="downloadBtn">
+                        <span>💾</span> Download Edited PDF
+                    </button>
+                </div>
+            </section>
+
+            <!-- PDF Preview Section -->
+            <section class="preview-section" id="previewSection" style="display: none;">
+                <div class="preview-header">
+                    <h3>📖 PDF Pages</h3>
+                    <div class="preview-controls">
+                        <div class="preview-info">
+                            <span id="pageCount">0 pages</span> • 
+                            <span id="selectedCount">0 selected</span>
+                        </div>
+                        <span class="drag-hint">💡 Drag pages to reorder them</span>
+                    </div>
+                </div>
+                <div class="pages-container" id="pagesContainer">
+                    <!-- Pages will be dynamically loaded here -->
+                </div>
+            </section>
+
+            <!-- Text Addition Modal -->
+            <div class="modal" id="textModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>✏️ Add Text to PDF</h3>
+                        <span class="close" onclick="closeTextModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="textContent">Text Content:</label>
+                            <textarea id="textContent" rows="3" placeholder="Enter text to add..."></textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="textSize">Font Size:</label>
+                                <input type="number" id="textSize" value="12" min="8" max="72">
+                            </div>
+                            <div class="form-group">
+                                <label for="textColor">Text Color:</label>
+                                <input type="color" id="textColor" value="#000000">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="textX">X Position:</label>
+                                <input type="number" id="textX" value="50" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="textY">Y Position:</label>
+                                <input type="number" id="textY" value="750" min="0">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="targetPage">Target Page:</label>
+                            <select id="targetPage">
+                                <!-- Options will be dynamically populated -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closeTextModal()">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="addTextToPDF()">Add Text</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Loading Indicator -->
+        <div class="loading" id="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Processing PDF...</p>
+            <div class="progress-bar" id="progressBar" style="display: none;">
+                <div class="progress-fill" id="progressFill"></div>
+                <span class="progress-text" id="progressText">0%</span>
+            </div>
+        </div>
+
+        <!-- Status Messages -->
+        <div class="status-message" id="statusMessage"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

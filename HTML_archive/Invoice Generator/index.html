@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Invoice</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: left;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .header img {
+            max-height: 100px;
+            margin-right: 20px;
+        }
+
+        .header-text {
+            font-family: Arial, sans-serif;
+        }
+
+        .header h1 {
+            font-size: 24pt;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .header p {
+            font-size: 10pt;
+            color: #333;
+            margin-bottom: 0;
+        }
+
+        .invoice-details {
+            text-align: right;
+            margin-bottom: 15px;
+        }
+
+        .invoice-details strong {
+            font-size: 12pt;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .section h2 {
+            font-size: 14pt;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #000;
+            padding-bottom: 5px;
+            font-weight: bold;
+            font-family: Arial, sans-serif;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+        }
+
+        th,
+        td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: left;
+            font-size: 10pt;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        .total-cost {
+            text-align: right;
+            margin-top: 15px;
+            font-size: 14pt;
+            font-weight: bold;
+        }
+
+        .approval {
+            margin-top: 20px;
+        }
+
+        .approval p {
+            margin-bottom: 8px;
+            font-size: 10pt;
+        }
+
+        .approval-line {
+            border-bottom: 1px solid #000;
+            padding-bottom: 3px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #000;
+            color: #666;
+            font-size: 8pt;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .button:hover {
+            background-color: #45a049;
+        }
+
+        .share-button {
+            background-color: #007bff;
+        }
+
+        .share-button:hover {
+            background-color: #0056b3;
+        }
+
+        .logo-upload {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .logo-upload input[type="file"] {
+            display: none;
+        }
+
+        .logo-upload img {
+            max-width: 200px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <img id="logoPreview" src="company-logo.png" alt="Company Logo">
+            <div class="header-text">
+                <h1>INVOICE</h1>
+                <p>
+                    <label for="companyName">Company Name:</label>
+                    <input type="text" id="companyName" class="input-field" value="">
+                </p>
+                <p>
+                    <label for="companyPhone">Phone Number:</label>
+                    <input type="text" id="companyPhone" class="input-field" value="">
+                </p>
+            </div>
+            <div class="logo-upload">
+                <label for="logo">Upload Logo:</label>
+                <input type="file" id="logo" accept="image/*" onchange="displayLogo()">
+            </div>
+        </div>
+
+        <div class="invoice-details">
+            <strong>Invoice Date:</strong>
+            <input type="date" id="invoiceDate" class="input-field" value="2026-05-18">
+        </div>
+
+        <div class="section">
+            <h2>Client</h2>
+            <p>
+                <label for="clientName">Client Name:</label><br>
+                <input type="text" id="clientName" class="input-field"
+                    value=""><br>
+                <label for="clientAddress">Client Address:</label><br>
+                <textarea id="clientAddress" class="input-field"
+                    rows="3"></textarea>
+            </p>
+        </div>
+
+        <div class="section">
+            <h2>Project Overview</h2>
+            <p>
+
+            </p>
+            <p>
+
+            </p>
+            <p>
+
+            </p>
+            <p>
+                <strong></strong>
+            </p>
+            <ul>
+                <li></li>
+                <li></li>
+                <li></li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2></h2>
+            <p>
+                <strong></strong>
+            </p>
+            <p>
+                <strong></strong>
+            </p>
+            <p>
+                <strong></strong>
+            </p>
+        </div>
+
+        <div class="total-cost">
+            <strong>Total Cost:</strong>
+            <input type="number" id="totalCost" class="input-field" value=".00">
+            <p>
+                This amount includes all
+            </p>
+        </div>
+
+        <div class="section">
+            <h2>Payment Terms</h2>
+            <p>
+                <strong>Deposit:</strong> A 70% deposit is required prior to starting services.
+            </p>
+            <p>
+                <strong>Balance:</strong> The remaining balance is due upon completion and inspection of the work.
+            </p>
+            <p>
+                <strong>Scheduling:</strong> Scheduling for the project will be confirmed upon receipt of the deposit. Once
+                received, we will promptly allocate resources and begin work as agreed.
+            </p>
+            <p>
+                <strong>Additional Information:</strong> If you have any questions or require further clarification about the
+                payment terms, please don't hesitate to contact us. We are dedicated to providing excellent service and
+                ensuring your satisfaction throughout the process.
+            </p>
+        </div>
+
+        <div class="approval">
+            <h2>Client Approval</h2>
+            <p>
+                By signing below, I acknowledge that the work described above has been completed to my
+                satisfaction. I confirm my approval of the work performed and agree to remit payment according to the terms
+                outlined.
+            </p>
+            <p>
+                <strong>Client's Signature:</strong>
+                <input type="text" id="clientSignature" class="input-field">
+            </p>
+            <p>
+                <strong>Date:</strong>
+                <input type="date" id="clientSignatureDate" class="input-field">
+            </p>
+        </div>
+
+        <div class="action-buttons">
+            <button onclick="generatePDF()" class="button share-button">Generate PDF</button>
+            <button onclick="shareTemplate()" class="button">Share Template</button>
+        </div>
+
+        <div class="footer">
+            <p>Thank you for choosing [blank] </p>
+        </div>
+    </div>
+
+    <script>
+        function displayLogo() {
+            var logoInput = document.getElementById("logo");
+            var logoPreview = document.getElementById("logoPreview");
+            var file = logoInput.files[0];
+            var reader = new FileReader();
+            reader.onloadend = function() {
+                logoPreview.src = reader.result;
+                logoPreview.style.display = 'block';
+            }
+            if (file) {
+                reader.readAsDataURL(file);
+            }
+        }
+
+        async function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: "p",
+                unit: "mm",
+                format: "a4"
+            });
+
+            // Retrieve input values
+            const companyName = document.getElementById('companyName').value;
+            const companyPhone = document.getElementById('companyPhone').value;
+            const invoiceDate = document.getElementById('invoiceDate').value;
+            const clientName = document.getElementById('clientName').value;
+            const clientAddress = document.getElementById('clientAddress').value;
+            const totalCost = document.getElementById('totalCost').value;
+            const clientSignature = document.getElementById('clientSignature').value;
+            const clientSignatureDate = document.getElementById('clientSignatureDate').value;
+
+            let y = 20; // Initial Y position for text
+            const margin = 10; // Margin from the edges of the page
+            const lineHeight = 7; // Line height for text
+
+            // **Company Logo**
+            const logoImg = document.getElementById('logoPreview');
+            if (logoImg && logoImg.src && logoImg.src.startsWith('data:image')) {
+                doc.addImage(logoImg.src, 'PNG', 150, margin, 35, 20); // Logo in top-right
+            }
+
+            // **Invoice Title**
+            doc.setFont('Arial', 'bold');
+            doc.setFontSize(16);
+            doc.text('Invoice', margin, y);
+            y += 10;
+
+            // **Company Details**
+            doc.setFont('Arial', 'normal');
+            doc.setFontSize(12);
+            doc.text(`Company Name: ${companyName}`, margin, y);
+            y += lineHeight;
+            doc.text(`Phone Number: ${companyPhone}`, margin, y);
+            y += lineHeight;
+            doc.text(`Invoice Date: ${invoiceDate}`, margin, y);
+            y += 12;
+
+            // **Client Details**
+            doc.setFont('Arial', 'bold');
+            doc.setFontSize(12);
+            doc.text('Client:', margin, y);
+            y += lineHeight;
+            doc.setFont('Arial', 'normal');
+            doc.text(clientName, margin, y);
+            y += lineHeight;
+            // Split client address into lines and add them
+            const addressLines = doc.splitTextToSize(clientAddress, 180); // 180mm width
+            addressLines.forEach(line => {
+                doc.text(line, margin, y);
+                y += lineHeight;
+            });
+            y += 5;
+
+            // **Project Overview**
+            doc.setFont('Arial', 'bold');
+            doc.text('Project Overview', margin, y);
+            y += lineHeight;
+            doc.setFont('Arial', 'normal');
+            doc.text('', margin, y);
+            y += lineHeight;
+            doc.text('', margin, y);
+            y += lineHeight;
+            doc.text('', margin, y);
+            y += 10;
+
+            doc.setFont('Arial', 'bold');
+            doc.text('', margin, y);
+            y += lineHeight;
+            doc.setFont('Arial', 'normal');
+            doc.text('', margin + 5, y);
+            y += lineHeight;
+            doc.text('', margin + 5, y);
+            y += lineHeight;
+            doc.text('', margin + 5, y);
+            y += 12;
+
+            // **Warranty and Scope**
+            doc.setFont('Arial', 'bold');
+            doc.text('', margin, y);
+            y += lineHeight;
+            doc.text('Warranty:', margin, y);
+            doc.setFont('Arial', 'normal');
+            doc.text('', margin + 30, y);
+            y += lineHeight;
+            doc.setFont('Arial', 'bold');
+            doc.text('Scope:', margin, y);
+            doc.setFont('Arial', 'normal');
+            doc.text('', margin + 30, y);
+            y += lineHeight;
+            doc.setFont('Arial', 'bold');
+            doc.text('Exclusions:', margin, y);
+            doc.setFont('Arial', 'normal');
+            doc.text('', margin + 30, y);
+            y += 12;
+
+            // **Total Cost**
+            doc.setFont('Arial', 'bold');
+            doc.text(`Total Cost: $${totalCost}`, margin, y);
+            y += lineHeight;
+            doc.setFont('Arial', 'normal');
+            doc.text('This amount includes all [blank] services.', margin, y);
+            y += 12;
+
+            // **Payment Terms**
+            doc.setFont('Arial', 'bold');
+            doc.text('Payment Terms', margin, y);
+            y += lineHeight;
+            doc.text('Deposit:', margin, y);
+            doc.setFont('Arial', 'normal');
+            doc.text('A 70% deposit is required prior to starting services.', margin + 30, y);
+            y += lineHeight;
+            doc.setFont('Arial', 'bold');
+            doc.text('Balance:', margin, y);
+            doc.setFont('Arial', 'normal');
+            doc.text('The remaining balance is due upon completion of work.', margin + 30, y);
+            y += 12;
+
+            // **Client Approval**
+            doc.setFont('Arial', 'bold');
+            doc.text('Client Approval', margin, y);
+            y += lineHeight;
+            doc.setFont('Arial', 'normal');
+            doc.text('By signing below, I acknowledge that the work', margin, y);
+            y += lineHeight;
+            doc.text('described above has been completed to my satisfaction.', margin, y);
+            y += 12;
+
+            doc.setFont('Arial', 'bold');
+            doc.text("Client's Signature:", margin, y);
+            doc.setFont('Arial', 'normal');
+            doc.text(clientSignature, margin + 40, y);
+            y += lineHeight;
+            doc.text(`Date: ${clientSignatureDate}`, margin, y);
+            y += 12;
+
+            // **Footer**
+            doc.setFontSize(10);
+            doc.setFont('Arial', 'italic');
+            doc.text('Thank you for choosing Florida Window & Door Maintenance, Inc.', margin, y);
+
+            // Save the PDF
+            doc.save('invoice.pdf');
+        }
+
+        function shareTemplate() {
+            alert("Template sharing functionality is not implemented yet. Please download the PDF instead.");
+        }
+    </script>
+</body>
+
+</html>

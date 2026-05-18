@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Card Generator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter font from Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- jsPDF CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light gray background */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 1200px;
+            width: 100%;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 30px;
+        }
+        @media (min-width: 1024px) {
+            .container {
+                flex-direction: row;
+            }
+        }
+        .input-section, .preview-section {
+            flex: 1;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f9fafb;
+            box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+        }
+        .input-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #374151;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="email"],
+        .form-group input[type="tel"],
+        .form-group input[type="url"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 1rem;
+            color: #1f2937;
+            background-color: #ffffff;
+            box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-group input[type="text"]:focus,
+        .form-group input[type="email"]:focus,
+        .form-group input[type="tel"]:focus,
+        .form-group input[type="url"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+        .logo-upload-box {
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+        .logo-upload-box:hover {
+            border-color: #9ca3af;
+            background-color: #f3f4f6;
+        }
+        .logo-upload-box input[type="file"] {
+            display: none;
+        }
+        .logo-upload-box p {
+            color: #6b7280;
+            margin-top: 10px;
+        }
+        .logo-upload-box img {
+            max-width: 100px;
+            max-height: 100px;
+            margin: 0 auto 10px auto;
+            border-radius: 8px;
+            object-fit: contain;
+        }
+        .card-preview-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 250px; /* Ensure space for preview */
+            background-color: #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            position: relative; /* For absolute positioning of cards */
+            overflow: hidden; /* Hide overflow when one card is hidden */
+        }
+        .business-card {
+            width: 350px; /* Represents 3.5 inches at 100px/inch for display */
+            height: 200px; /* Represents 2 inches at 100px/inch for display */
+            background-color: #ffffff; /* Default background */
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding: 20px; /* Overall padding for the card content */
+            position: absolute; /* Position cards absolutely within wrapper */
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            overflow: hidden;
+            transition: background-color 0.3s, opacity 0.3s; /* Smooth transition for theme and visibility */
+
+            /* Grid layout for logo and text on front side */
+            display: grid;
+            grid-template-columns: 100px 1fr; /* Fixed width for logo area, rest for text */
+            grid-template-areas: "logo-area text-area";
+            align-items: center; /* Vertically center content in grid cells */
+            gap: 15px; /* Space between logo and text areas */
+        }
+        .business-card.hidden {
+            opacity: 0;
+            pointer-events: none; /* Disable interactions when hidden */
+        }
+
+        /* Theme Styles */
+        .business-card.theme-bonestock {
+            background-color: #FDFDFD;
+        }
+        .business-card.theme-bonestock .card-text,
+        .business-card.theme-bonestock .card-contact-info,
+        .business-card.theme-bonestock .back-text {
+            color: #1A202C;
+        }
+        .business-card.theme-bonestock .card-company,
+        .business-card.theme-bonestock .back-tagline {
+            color: #6B46C1;
+        }
+        .business-card.theme-eggshell {
+            background-color: #F8F8F0;
+        }
+        .business-card.theme-eggshell .card-text,
+        .business-card.theme-eggshell .card-contact-info,
+        .business-card.theme-eggshell .back-text {
+            color: #2D3748;
+        }
+        .business-card.theme-eggshell .card-company,
+        .business-card.theme-eggshell .back-tagline {
+            color: #D69E2E;
+        }
+
+        /* Logo and Text Area Styling (Front Side) */
+        .logo-area {
+            display: flex;
+            justify-content: center; /* Center logo horizontally within its area */
+            align-items: center; /* Center logo vertically within its area */
+            height: 100%; /* Take full height of grid row */
+        }
+        .text-area {
+            height: 100%; /* Take full height of grid row */
+            display: flex;
+            flex-direction: column;
+            justify-content: center; /* Vertically center text block */
+        }
+
+        /* Layout Styles (for text alignment within its area) */
+        .business-card.text-layout-left .text-area {
+            text-align: left;
+            align-items: flex-start;
+        }
+        .business-card.text-layout-right .text-area {
+            text-align: right;
+            align-items: flex-end;
+        }
+        .business-card.text-layout-center .text-area {
+            text-align: center;
+            align-items: center;
+        }
+
+        /* Back Card Specific Styles */
+        #backCardPreview {
+            display: flex; /* Override grid for back card */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 25px; /* More padding for back card content */
+        }
+        .back-card-content {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            width: 100%;
+            text-align: center;
+            gap: 6px; /* Reduced spacing between elements on back to fit more */
+        }
+        .back-tagline {
+            font-size: 1.2rem; /* Slightly smaller tagline for better fit */
+            font-weight: 700;
+            margin-bottom: 8px; /* Reduced margin */
+        }
+        .back-address, .back-social {
+            font-size: 0.9rem; /* Slightly smaller text for better fit */
+            color: #4b5563;
+            line-height: 1.2; /* Reduced line height */
+        }
+        .back-logo-full {
+            max-width: 150px; /* Adjusted max-width for back logo */
+            max-height: 70px; /* Adjusted max-height for back logo */
+            object-fit: contain;
+            margin-bottom: 12px; /* Adjusted margin */
+        }
+
+
+        .card-logo {
+            max-width: 90px; /* Ensure logo fits within 100px area with some padding */
+            max-height: 90px; /* Ensure logo fits within 100px area with some padding */
+            object-fit: contain;
+        }
+        .card-text {
+            color: #1f2937; /* Default text color */
+            line-height: 1.3;
+            width: 100%; /* Ensure text block takes full width of its grid area */
+        }
+        .card-name {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #4b5563; /* Default title color */
+            margin-bottom: 10px;
+        }
+        .card-company {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #3b82f6; /* Default company color */
+            margin-bottom: 5px;
+        }
+        .card-contact-info {
+            font-size: 0.85rem;
+            color: #4b5563; /* Default contact info color */
+        }
+        .card-contact-info p {
+            margin-bottom: 2px;
+        }
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .btn-primary:hover {
+            background-color: #2563eb;
+            transform: translateY(-1px);
+        }
+        .btn-primary:active {
+            background-color: #1d4ed8;
+            transform: translateY(0);
+        }
+        .radio-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background-color: #ffffff;
+            transition: all 0.2s;
+        }
+        .radio-group input[type="radio"] {
+            accent-color: #3b82f6;
+        }
+        .radio-group input[type="radio"]:checked + span {
+            font-weight: 600;
+            color: #3b82f6;
+        }
+        .radio-group input[type="radio"]:checked ~ label {
+             border-color: #3b82f6;
+             box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+        .section-separator {
+            border-top: 1px solid #e5e7eb;
+            padding-top: 15px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Input Section -->
+        <div class="input-section">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Customize Your Business Card</h2>
+
+            <!-- Logo Upload -->
+            <div class="form-group">
+                <label for="logoUpload">Upload Logo</label>
+                <div class="logo-upload-box" id="logoUploadBox">
+                    <input type="file" id="logoUpload" accept="image/*">
+                    <img id="uploadedLogoPreview" src="" alt="Logo Preview" class="hidden">
+                    <p class="text-sm text-gray-500">Drag & drop or click to upload (PNG, JPG, SVG)</p>
+                </div>
+            </div>
+
+            <!-- Front Side Text Inputs -->
+            <div class="form-group">
+                <label for="cardName">Your Name</label>
+                <input type="text" id="cardName" placeholder="John Doe" value="John Doe">
+            </div>
+            <div class="form-group">
+                <label for="cardTitle">Your Title</label>
+                <input type="text" id="cardTitle" placeholder="Marketing Manager" value="Marketing Manager">
+            </div>
+            <div class="form-group">
+                <label for="cardCompany">Company Name</label>
+                <input type="text" id="cardCompany" placeholder="Acme Corp." value="Acme Corp.">
+            </div>
+            <div class="form-group">
+                <label for="cardPhone">Phone Number</label>
+                <input type="tel" id="cardPhone" placeholder="(123) 456-7890" value="(123) 456-7890">
+            </div>
+            <div class="form-group">
+                <label for="cardEmail">Email Address</label>
+                <input type="email" id="cardEmail" placeholder="john.doe@example.com" value="john.doe@example.com">
+            </div>
+            <div class="form-group">
+                <label for="cardWebsite">Website</label>
+                <input type="url" id="cardWebsite" placeholder="www.example.com" value="www.example.com">
+            </div>
+
+            <!-- Back Side Text Inputs -->
+            <div class="section-separator">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Back Side Content (Optional)</h3>
+            </div>
+            <div class="form-group">
+                <label for="cardAddress1">Address Line 1</label>
+                <input type="text" id="cardAddress1" placeholder="123 Main St" value="123 Main St">
+            </div>
+            <div class="form-group">
+                <label for="cardAddress2">Address Line 2 (Apt, Suite, etc.)</label>
+                <input type="text" id="cardAddress2" placeholder="Suite 100">
+            </div>
+            <div class="form-group">
+                <label for="cardCity">City</label>
+                <input type="text" id="cardCity" placeholder="Anytown" value="Anytown">
+            </div>
+            <div class="form-group">
+                <label for="cardStateZip">State/Province, Zip/Postal Code</label>
+                <input type="text" id="cardStateZip" placeholder="CA 90210" value="CA 90210">
+            </div>
+            <div class="form-group">
+                <label for="cardSocial">Social Media Link</label>
+                <input type="url" id="cardSocial" placeholder="linkedin.com/in/johndoe" value="linkedin.com/in/johndoe">
+            </div>
+            <div class="form-group">
+                <label for="cardTagline">Tagline / Slogan</label>
+                <input type="text" id="cardTagline" placeholder="Innovating for a Brighter Future" value="Innovating for a Brighter Future">
+            </div>
+
+
+            <!-- Theme Selection -->
+            <div class="section-separator">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Design Options</h3>
+            </div>
+            <div class="form-group">
+                <label>Color Theme</label>
+                <div class="radio-group" id="themeSelection">
+                    <label>
+                        <input type="radio" name="cardTheme" value="default" checked>
+                        <span>Default</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="cardTheme" value="bonestock">
+                        <span>Bonestock White</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="cardTheme" value="eggshell">
+                        <span>Eggshell White</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Text Layout Selection -->
+            <div class="form-group">
+                <label>Text Layout (Front Side)</label>
+                <div class="radio-group" id="textLayoutSelection">
+                    <label>
+                        <input type="radio" name="cardTextLayout" value="left" checked>
+                        <span>Left</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="cardTextLayout" value="right">
+                        <span>Right</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="cardTextLayout" value="center">
+                        <span>Center</span>
+                    </label>
+                </div>
+            </div>
+
+            <button id="generatePdfBtn" class="btn-primary mt-6">Generate PDF</button>
+        </div>
+
+        <!-- Preview Section -->
+        <div class="preview-section">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Business Card Preview</h2>
+
+            <!-- Preview Toggle -->
+            <div class="form-group mb-4">
+                <label>View Side:</label>
+                <div class="radio-group" id="previewSideSelection">
+                    <label>
+                        <input type="radio" name="previewSide" value="front" checked>
+                        <span>Front</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="previewSide" value="back">
+                        <span>Back</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="card-preview-wrapper">
+                <!-- Front Card Preview -->
+                <div class="business-card theme-default text-layout-left" id="frontCardPreview">
+                    <div class="logo-area">
+                        <img id="previewLogoFront" src="" alt="Company Logo" class="card-logo hidden">
+                    </div>
+                    <div class="text-area">
+                        <p class="card-name" id="previewName">John Doe</p>
+                        <p class="card-title" id="previewTitle">Marketing Manager</p>
+                        <p class="card-company" id="previewCompany">Acme Corp.</p>
+                        <div class="card-contact-info">
+                            <p id="previewPhone">(123) 456-7890</p>
+                            <p id="previewEmail">john.doe@example.com</p>
+                            <p id="previewWebsite">www.example.com</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Back Card Preview -->
+                <div class="business-card theme-default hidden" id="backCardPreview">
+                    <div class="back-card-content">
+                        <img id="previewLogoBack" src="" alt="Company Logo" class="back-logo-full hidden">
+                        <p class="back-tagline" id="previewTagline">Innovating for a Brighter Future</p>
+                        <div class="back-address">
+                            <p id="previewAddress1">123 Main St</p>
+                            <p id="previewAddress2"></p>
+                            <p id="previewCityStateZip">Anytown, CA 90210</p>
+                        </div>
+                        <p class="back-social" id="previewSocial">linkedin.com/in/johndoe</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Ensure jsPDF is loaded before use
+        const { jsPDF } = window.jspdf;
+
+        // Get DOM elements for Front Side
+        const logoUploadInput = document.getElementById('logoUpload');
+        const logoUploadBox = document.getElementById('logoUploadBox');
+        const uploadedLogoPreview = document.getElementById('uploadedLogoPreview');
+        const previewLogoFront = document.getElementById('previewLogoFront');
+
+        const cardNameInput = document.getElementById('cardName');
+        const cardTitleInput = document.getElementById('cardTitle');
+        const cardCompanyInput = document.getElementById('cardCompany');
+        const cardPhoneInput = document.getElementById('cardPhone');
+        const cardEmailInput = document.getElementById('cardEmail');
+        const cardWebsiteInput = document.getElementById('cardWebsite');
+
+        const previewName = document.getElementById('previewName');
+        const previewTitle = document.getElementById('previewTitle');
+        const previewCompany = document.getElementById('previewCompany');
+        const previewPhone = document.getElementById('previewPhone');
+        const previewEmail = document.getElementById('previewEmail');
+        const previewWebsite = document.getElementById('previewWebsite');
+
+        // Get DOM elements for Back Side
+        const cardAddress1Input = document.getElementById('cardAddress1');
+        const cardAddress2Input = document.getElementById('cardAddress2');
+        const cardCityInput = document.getElementById('cardCity');
+        const cardStateZipInput = document.getElementById('cardStateZip');
+        const cardSocialInput = document.getElementById('cardSocial');
+        const cardTaglineInput = document.getElementById('cardTagline');
+
+        const previewLogoBack = document.getElementById('previewLogoBack');
+        const previewTagline = document.getElementById('previewTagline');
+        const previewAddress1 = document.getElementById('previewAddress1');
+        const previewAddress2 = document.getElementById('previewAddress2');
+        const previewCityStateZip = document.getElementById('previewCityStateZip');
+        const previewSocial = document.getElementById('previewSocial');
+
+
+        // Preview Card Elements
+        const frontCardPreview = document.getElementById('frontCardPreview');
+        const backCardPreview = document.getElementById('backCardPreview');
+        const themeSelection = document.getElementById('themeSelection');
+        const textLayoutSelection = document.getElementById('textLayoutSelection');
+        const previewSideSelection = document.getElementById('previewSideSelection');
+
+        const generatePdfBtn = document.getElementById('generatePdfBtn');
+
+        let logoDataUrl = null; // To store logo data for PDF generation
+
+        // Theme configurations for PDF generation
+        const themes = {
+            'default': {
+                bgColor: '#FFFFFF',
+                textColor: '#1f2937',
+                companyColor: '#3b82f6',
+                titleColor: '#4b5563',
+                contactInfoColor: '#4b5563',
+                backTaglineColor: '#3b82f6', // Default company color for tagline
+                backTextColor: '#1f2937' // Default text color for back
+            },
+            'bonestock': {
+                bgColor: '#FDFDFD',
+                textColor: '#1A202C',
+                companyColor: '#6B46C1',
+                titleColor: '#1A202C',
+                contactInfoColor: '#1A202C',
+                backTaglineColor: '#6B46C1',
+                backTextColor: '#1A202C'
+            },
+            'eggshell': {
+                bgColor: '#F8F8F0',
+                textColor: '#2D3748',
+                companyColor: '#D69E2E',
+                titleColor: '#2D3748',
+                contactInfoColor: '#2D3748',
+                backTaglineColor: '#D69E2E',
+                backTextColor: '#2D3748'
+            }
+        };
+
+        // Function to update card preview text and styles
+        function updateCardPreview() {
+            // Update Front Side
+            previewName.textContent = cardNameInput.value;
+            previewTitle.textContent = cardTitleInput.value;
+            previewCompany.textContent = cardCompanyInput.value;
+            previewPhone.textContent = cardPhoneInput.value;
+            previewEmail.textContent = cardEmailInput.value;
+            previewWebsite.textContent = cardWebsiteInput.value;
+
+            // Update Back Side
+            previewTagline.textContent = cardTaglineInput.value;
+            previewAddress1.textContent = cardAddress1Input.value;
+            previewAddress2.textContent = cardAddress2Input.value;
+            previewCityStateZip.textContent = `${cardCityInput.value}${cardCityInput.value && cardStateZipInput.value ? ', ' : ''}${cardStateZipInput.value}`;
+            previewSocial.textContent = cardSocialInput.value;
+
+            // Apply theme and text layout classes to both preview cards
+            const selectedTheme = document.querySelector('input[name="cardTheme"]:checked').value;
+            const selectedTextLayout = document.querySelector('input[name="cardTextLayout"]:checked').value;
+
+            frontCardPreview.className = 'business-card'; // Reset to base class
+            frontCardPreview.classList.add(`theme-${selectedTheme}`);
+            frontCardPreview.classList.add(`text-layout-${selectedTextLayout}`);
+
+            backCardPreview.className = 'business-card'; // Reset to base class
+            backCardPreview.classList.add(`theme-${selectedTheme}`); // Back card always center aligned for now
+
+            // Handle preview side visibility
+            const selectedPreviewSide = document.querySelector('input[name="previewSide"]:checked').value;
+            if (selectedPreviewSide === 'front') {
+                frontCardPreview.classList.remove('hidden');
+                backCardPreview.classList.add('hidden');
+            } else {
+                frontCardPreview.classList.add('hidden');
+                backCardPreview.classList.remove('hidden');
+            }
+        }
+
+        // Initial update on load
+        updateCardPreview();
+
+        // Event listeners for all text inputs
+        document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], input[type="url"]').forEach(input => {
+            input.addEventListener('input', updateCardPreview);
+        });
+
+        // Event listeners for theme and text layout selection
+        themeSelection.addEventListener('change', updateCardPreview);
+        textLayoutSelection.addEventListener('change', updateCardPreview);
+        previewSideSelection.addEventListener('change', updateCardPreview);
+
+        // Logo upload handling
+        logoUploadBox.addEventListener('click', () => logoUploadInput.click());
+        logoUploadInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    uploadedLogoPreview.src = e.target.result;
+                    uploadedLogoPreview.classList.remove('hidden');
+                    previewLogoFront.src = e.target.result;
+                    previewLogoFront.classList.remove('hidden');
+                    previewLogoBack.src = e.target.result; // Also set for back preview
+                    previewLogoBack.classList.remove('hidden');
+                    logoDataUrl = e.target.result; // Store for PDF
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Drag and drop functionality for logo
+        logoUploadBox.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            logoUploadBox.classList.add('border-blue-500', 'bg-blue-50');
+        });
+
+        logoUploadBox.addEventListener('dragleave', (event) => {
+            event.preventDefault();
+            logoUploadBox.classList.remove('border-blue-500', 'bg-blue-50');
+        });
+
+        logoUploadBox.addEventListener('drop', (event) => {
+            event.preventDefault();
+            logoUploadBox.classList.remove('border-blue-500', 'bg-blue-50');
+            const file = event.dataTransfer.files[0];
+            if (file) {
+                logoUploadInput.files = event.dataTransfer.files; // Set the file to the input
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    uploadedLogoPreview.src = e.target.result;
+                    uploadedLogoPreview.classList.remove('hidden');
+                    previewLogoFront.src = e.target.result;
+                    previewLogoFront.classList.remove('hidden');
+                    previewLogoBack.src = e.target.result; // Also set for back preview
+                    previewLogoBack.classList.remove('hidden');
+                    logoDataUrl = e.target.result; // Store for PDF
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+
+        // PDF Generation
+        generatePdfBtn.addEventListener('click', async () => {
+            const selectedTheme = document.querySelector('input[name="cardTheme"]:checked').value;
+            const selectedTextLayout = document.querySelector('input[name="cardTextLayout"]:checked').value;
+            const themeConfig = themes[selectedTheme];
+
+            // Standard business card dimensions: 3.5 x 2 inches (trim size)
+            const trimWidthInches = 3.5;
+            const trimHeightInches = 2.0;
+
+            // Bleed dimensions for Vistaprint/Canva compatibility (e.g., 0.0625 inches bleed on each side)
+            const bleedAmount = 0.0625;
+            const bleedWidthInches = trimWidthInches + (2 * bleedAmount);
+            const bleedHeightInches = trimHeightInches + (2 * bleedAmount);
+
+            const doc = new jsPDF({
+                orientation: 'landscape',
+                unit: 'in',
+                format: [bleedWidthInches, bleedHeightInches] // PDF page size includes bleed
+            });
+
+            // --- Define PDF layout constants based on preview proportions ---
+            // Assuming 96 DPI for conversion from px to inches for visual consistency (common browser DPI)
+            const PX_TO_INCH = 1 / 96;
+
+            const previewCardWidthPx = 350;
+            const previewCardHeightPx = 200;
+            const previewPaddingPx = 20;
+            const previewLogoColWidthPx = 100;
+            const previewGapPx = 15;
+            const previewLogoImageMaxPx = 90; // max-width/height of the actual logo image in preview
+
+            const pdfContentPadding = previewPaddingPx * PX_TO_INCH;
+            const pdfLogoColumnWidth = previewLogoColWidthPx * PX_TO_INCH;
+            const pdfGapBetweenColumns = previewGapPx * PX_TO_INCH;
+            const pdfMaxLogoImageSize = previewLogoImageMaxPx * PX_TO_INCH;
+
+            // Calculate content area within the trim lines
+            const contentAreaForCenteringX = bleedAmount; // Start of trim area
+            const contentAreaForCenteringY = bleedAmount; // Start of trim area
+            const contentAreaForCenteringWidth = trimWidthInches;
+            const contentAreaForCenteringHeight = trimHeightInches;
+
+
+            // --- Front Side PDF ---
+            doc.setFillColor(themeConfig.bgColor);
+            doc.rect(0, 0, bleedWidthInches, bleedHeightInches, 'F'); // Fill entire page with background color (including bleed)
+
+            // Calculate text area width for front side
+            const textPdfWidth = contentAreaForCenteringWidth - pdfLogoColumnWidth - pdfGapBetweenColumns - (2 * pdfContentPadding); // Adjusted for overall padding
+
+            // Function to add front content (logo and text)
+            const addFrontContent = () => {
+                return new Promise((resolve) => {
+                    // Calculate total text height for vertical centering
+                    let totalTextHeight = 0;
+                    totalTextHeight += 0.2; // Name (16pt)
+                    totalTextHeight += 0.15; // Title (10pt)
+                    totalTextHeight += 0.2; // Company (12pt)
+                    if (cardPhoneInput.value) totalTextHeight += 0.12;
+                    if (cardEmailInput.value) totalTextHeight += 0.12;
+                    if (cardWebsiteInput.value) totalTextHeight += 0.12;
+
+                    if (logoDataUrl) {
+                        const img = new Image();
+                        img.src = logoDataUrl;
+                        img.onload = () => {
+                            let actualLogoWidth = img.width / img.dpiX || 0.5;
+                            let actualLogoHeight = img.height / img.dpiY || 0.5;
+
+                            // Scale logo to fit within the defined PDF logo dimensions (based on preview max size)
+                            if (actualLogoWidth > pdfMaxLogoImageSize || actualLogoHeight > pdfMaxLogoImageSize) {
+                                const aspectRatio = img.width / img.height;
+                                if (actualLogoWidth / pdfMaxLogoImageSize > actualLogoHeight / pdfMaxLogoImageSize) {
+                                    actualLogoWidth = pdfMaxLogoImageSize;
+                                    actualLogoHeight = pdfMaxLogoImageSize / aspectRatio;
+                                } else {
+                                    actualLogoHeight = pdfMaxLogoImageSize;
+                                    actualLogoWidth = pdfMaxLogoImageSize * aspectRatio;
+                                }
+                            }
+
+                            // Calculate the combined content height for vertical centering
+                            const combinedContentHeight = Math.max(actualLogoHeight, totalTextHeight);
+
+                            // Calculate start X and Y for the entire content block (logo + text area)
+                            const totalContentBlockWidth = pdfLogoColumnWidth + pdfGapBetweenColumns + textPdfWidth;
+                            const startXContent = bleedAmount + (trimWidthInches - totalContentBlockWidth) / 2;
+                            const startYContent = bleedAmount + (trimHeightInches - combinedContentHeight) / 2;
+
+                            // Position logo relative to startXContent and startYContent
+                            let finalLogoX = startXContent + (pdfLogoColumnWidth - actualLogoWidth) / 2;
+                            let finalLogoY = startYContent + (combinedContentHeight - actualLogoHeight) / 2;
+                            doc.addImage(logoDataUrl, 'PNG', finalLogoX, finalLogoY, actualLogoWidth, actualLogoHeight);
+
+                            // Position text relative to startXContent and startYContent
+                            let textXForLayout;
+                            if (selectedTextLayout === 'right') {
+                                textXForLayout = startXContent + pdfLogoColumnWidth + pdfGapBetweenColumns + textPdfWidth;
+                            } else if (selectedTextLayout === 'center') {
+                                textXForLayout = startXContent + pdfLogoColumnWidth + pdfGapBetweenColumns + (textPdfWidth / 2);
+                            } else { // 'left'
+                                textXForLayout = startXContent + pdfLogoColumnWidth + pdfGapBetweenColumns;
+                            }
+                            let textStartY = startYContent + (combinedContentHeight - totalTextHeight) / 2;
+                            
+                            addFrontTextToPdf(doc, textStartY, textXForLayout, selectedTextLayout, themeConfig, textPdfWidth);
+                            resolve();
+                        };
+                        img.onerror = () => {
+                            console.error("Failed to load logo image for PDF.");
+                            // If logo fails, text still needs to be vertically centered and positioned without logo space
+                            const combinedContentHeight = totalTextHeight; // Only text height
+                            const startXContent = bleedAmount + (trimWidthInches - textPdfWidth) / 2; // Center text if no logo
+                            const startYContent = bleedAmount + (trimHeightInches - combinedContentHeight) / 2;
+
+                            let textXForLayout;
+                            if (selectedTextLayout === 'right') {
+                                textXForLayout = startXContent + textPdfWidth;
+                            } else if (selectedTextLayout === 'center') {
+                                textXForLayout = startXContent + (textPdfWidth / 2);
+                            } else { // 'left'
+                                textXForLayout = startXContent;
+                            }
+                            addFrontTextToPdf(doc, startYContent, textXForLayout, selectedTextLayout, themeConfig, trimWidthInches - (2 * pdfContentPadding)); // Pass full content width
+                            resolve();
+                        };
+                    } else {
+                        // If no logo, text occupies full content width
+                        const fullContentWidth = trimWidthInches - (2 * pdfContentPadding);
+                        let noLogoTextX;
+                        if (selectedTextLayout === 'right') {
+                            noLogoTextX = bleedAmount + pdfContentPadding + fullContentWidth;
+                        } else if (selectedTextLayout === 'center') {
+                            noLogoTextX = bleedAmount + pdfContentPadding + (fullContentWidth / 2);
+                        } else { // 'left'
+                            noLogoTextX = bleedAmount + pdfContentPadding;
+                        }
+
+                        const combinedContentHeight = totalTextHeight; // Only text height
+                        const commonVerticalOffset = bleedAmount + (trimHeightInches - combinedContentHeight) / 2;
+                        addFrontTextToPdf(doc, commonVerticalOffset, noLogoTextX, selectedTextLayout, themeConfig, fullContentWidth);
+                        resolve();
+                    }
+                });
+            };
+
+            function addFrontTextToPdf(doc, startY, xPos, align, theme, availableWidth) {
+                let yPos = startY;
+                let currentTextX = xPos;
+                let currentAlign = align;
+                
+                // Name
+                doc.setFontSize(16);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(theme.textColor);
+                doc.text(cardNameInput.value, currentTextX, yPos, { align: currentAlign });
+                yPos += 0.2;
+
+                // Title
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(theme.titleColor);
+                doc.text(cardTitleInput.value, currentTextX, yPos, { align: currentAlign });
+                yPos += 0.15;
+
+                // Company
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(theme.companyColor);
+                doc.text(cardCompanyInput.value, currentTextX, yPos, { align: currentAlign });
+                yPos += 0.2;
+
+                // Contact Info
+                doc.setFontSize(9);
+                doc.setTextColor(theme.contactInfoColor);
+                if (cardPhoneInput.value) {
+                    doc.text(`Phone: ${cardPhoneInput.value}`, currentTextX, yPos, { align: currentAlign });
+                    yPos += 0.12;
+                }
+                if (cardEmailInput.value) {
+                    doc.text(`Email: ${cardEmailInput.value}`, currentTextX, yPos, { align: currentAlign });
+                    yPos += 0.12;
+                }
+                if (cardWebsiteInput.value) {
+                    doc.text(`Web: ${cardWebsiteInput.value}`, currentTextX, yPos, { align: currentAlign });
+                }
+            }
+
+            // --- Back Side PDF ---
+            const addBackContent = () => {
+                return new Promise((resolve) => {
+                    doc.addPage([bleedWidthInches, bleedHeightInches], 'landscape'); // Add a new page for the back
+                    doc.setFillColor(themeConfig.bgColor);
+                    doc.rect(0, 0, bleedWidthInches, bleedHeightInches, 'F'); // Fill entire page with background color
+
+                    const backCenterX = bleedWidthInches / 2;
+                    
+                    // Calculate total text height for back side
+                    let totalBackTextHeight = 0;
+                    if (cardTaglineInput.value) totalBackTextHeight += 0.25; // Tagline (14pt)
+                    if (cardAddress1Input.value) totalBackTextHeight += 0.12;
+                    if (cardAddress2Input.value) totalBackTextHeight += 0.12;
+                    if (cardCityInput.value || cardStateZipInput.value) totalBackTextHeight += 0.12;
+                    if (cardSocialInput.value) totalBackTextHeight += 0.1 + 0.12; // Gap + Social media line
+
+
+                    if (logoDataUrl) {
+                        const img = new Image();
+                        img.src = logoDataUrl;
+                        img.onload = () => {
+                            const maxLogoWidthBack = 1.8; // Increased for back side
+                            const maxLogoHeightBack = 0.9; // Increased for back side
+
+                            let actualLogoWidth = img.width / img.dpiX || 0.5;
+                            let actualLogoHeight = img.height / img.dpiY || 0.5;
+
+                            // Scale logo to fit within the defined max dimensions
+                            if (actualLogoWidth > maxLogoWidthBack || actualLogoHeight > maxLogoHeightBack) {
+                                const aspectRatio = img.width / img.height;
+                                if (actualLogoWidth / maxLogoWidthBack > actualLogoHeight / maxLogoHeightBack) {
+                                    actualLogoWidth = maxLogoWidthBack;
+                                    actualLogoHeight = maxLogoWidthBack / aspectRatio;
+                                } else {
+                                    actualLogoHeight = maxLogoHeightBack;
+                                    actualLogoWidth = maxLogoHeightBack * aspectRatio;
+                                }
+                            }
+                            // Calculate combined height of logo and text for back side vertical centering
+                            const combinedBackContentHeight = totalBackTextHeight + actualLogoHeight + 0.2; // Logo height + space after logo
+                            const backVerticalOffset = bleedAmount + (trimHeightInches - combinedBackContentHeight) / 2;
+
+                            doc.addImage(logoDataUrl, 'PNG', backCenterX - (actualLogoWidth / 2), backVerticalOffset, actualLogoWidth, actualLogoHeight);
+                            addBackTextContent(doc, backVerticalOffset + actualLogoHeight + 0.2, backCenterX, themeConfig);
+                            resolve();
+                        };
+                        img.onerror = () => {
+                            console.error("Failed to load logo image for back PDF.");
+                            // If logo fails, text still needs to be vertically centered
+                            const combinedBackContentHeight = totalBackTextHeight;
+                            const backVerticalOffset = bleedAmount + (trimHeightInches - combinedBackContentHeight) / 2;
+                            addBackTextContent(doc, backVerticalOffset, backCenterX, themeConfig);
+                            resolve();
+                        };
+                    } else {
+                        const combinedBackContentHeight = totalBackTextHeight;
+                        const backVerticalOffset = bleedAmount + (trimHeightInches - combinedBackContentHeight) / 2;
+                        addBackTextContent(doc, backVerticalOffset, backCenterX, themeConfig);
+                        resolve();
+                    }
+                });
+            }
+
+            function addBackTextContent(doc, startY, centerX, theme) {
+                let yPos = startY;
+
+                // Tagline
+                if (cardTaglineInput.value) {
+                    doc.setFontSize(14);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(theme.backTaglineColor);
+                    doc.text(cardTaglineInput.value, centerX, yPos, { align: 'center' });
+                    yPos += 0.25;
+                }
+
+                // Address
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(theme.backTextColor);
+                if (cardAddress1Input.value) {
+                    doc.text(cardAddress1Input.value, centerX, yPos, { align: 'center' });
+                    yPos += 0.12;
+                }
+                if (cardAddress2Input.value) {
+                    doc.text(cardAddress2Input.value, centerX, yPos, { align: 'center' });
+                    yPos += 0.12;
+                }
+                if (cardCityInput.value || cardStateZipInput.value) {
+                    doc.text(`${cardCityInput.value}${cardCityInput.value && cardStateZipInput.value ? ', ' : ''}${cardStateZipInput.value}`, centerX, yPos, { align: 'center' });
+                    yPos += 0.12;
+                }
+
+                // Social Media
+                if (cardSocialInput.value) {
+                    yPos += 0.1; // Add a little more space
+                    doc.text(cardSocialInput.value, centerX, yPos, { align: 'center' });
+                }
+            }
+
+            // Await both front and back content generation before saving
+            await addFrontContent();
+            await addBackContent();
+            doc.save('business_card.pdf');
+        });
+    </script>
+</body>
+</html>

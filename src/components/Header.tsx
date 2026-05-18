@@ -22,6 +22,7 @@ const Header = () => {
         {/* Navigation - Desktop */}
         <nav className="hidden md:flex items-center gap-6">
           <Link to="/" className="text-sm font-medium hover:text-primary transition-colors">Home</Link>
+          <Link to="/vault" className="text-sm font-medium hover:text-primary transition-colors">Vault</Link>
           <Link to="/tools/business-cards" className="text-sm font-medium hover:text-primary transition-colors">Cards</Link>
           <Link to="/tools/pdf-pro" className="text-sm font-medium hover:text-primary transition-colors">PDF</Link>
           <Link to="/tools/resume" className="text-sm font-medium hover:text-primary transition-colors">Resume</Link>
