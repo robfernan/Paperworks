@@ -9,6 +9,13 @@ It currently includes:
 - PDF Pro
 - Document Vault (cross-tool manager)
 
+## Screenshots
+
+<div align="center">
+  <img src="assets/screenshots/wails_desktop.png" alt="Wails Desktop Client" width="45%">
+  <img src="assets/screenshots/wails_responsiveness.png" alt="Invoice Studio Wails" width="45%">
+</div>
+
 ## Core principles
 
 - Free and open source
