@@ -208,7 +208,7 @@ const InvoiceCreator = () => {
       <h2 className="text-2xl font-bold mb-2">Invoice Studio</h2>
       <p className="text-sm text-muted-foreground mb-6">Archive-based professional invoice flow with offline drafts and PDF export.</p>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_1.5fr] gap-6">
         <aside className="border rounded-lg p-4 bg-background/50">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold">Saved Invoices</h3>
@@ -233,7 +233,7 @@ const InvoiceCreator = () => {
           </div>
         </aside>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_2fr] gap-6">
           <section className="border rounded-lg p-5 bg-background/50">
             <Input className="mb-2" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Invoice title" />
             <Input className="mb-2" value={data.companyName} onChange={(e) => setData({ ...data, companyName: e.target.value })} placeholder="Company name" />
@@ -255,11 +255,13 @@ const InvoiceCreator = () => {
               <div className="font-medium mb-2">Items</div>
               <div className="space-y-2">
                 {data.items.map((item) => (
-                  <div key={item.id} className="grid grid-cols-[1fr_88px_96px_auto] gap-2">
-                    <Input value={item.desc} onChange={(e) => updateItem(item.id, "desc", e.target.value)} placeholder="Description" />
-                    <Input type="number" value={item.qty} onChange={(e) => updateItem(item.id, "qty", Number(e.target.value))} />
-                    <Input type="number" value={item.price} onChange={(e) => updateItem(item.id, "price", Number(e.target.value))} />
-                    <Button variant="destructive" onClick={() => removeItem(item.id)}>Remove</Button>
+                  <div key={item.id} className="grid grid-cols-1 sm:grid-cols-[1fr_88px_96px_auto] gap-2">
+                    <Input value={item.desc} onChange={(e) => updateItem(item.id, "desc", e.target.value)} placeholder="Description" className="w-full" />
+                    <div className="flex gap-2 sm:contents">
+                      <Input type="number" value={item.qty} onChange={(e) => updateItem(item.id, "qty", Number(e.target.value))} placeholder="Qty" className="flex-1" />
+                      <Input type="number" value={item.price} onChange={(e) => updateItem(item.id, "price", Number(e.target.value))} placeholder="Price" className="flex-1" />
+                      <Button variant="destructive" onClick={() => removeItem(item.id)}>Remove</Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -293,21 +295,23 @@ const InvoiceCreator = () => {
               <div className="text-muted-foreground whitespace-pre-wrap">{data.clientAddress || "-"}</div>
             </div>
 
-            <div className="mt-4 border rounded-md overflow-hidden">
-              <div className="grid grid-cols-[1fr_60px_100px_110px] bg-muted/50 text-sm font-medium px-3 py-2">
-                <div>Description</div>
-                <div className="text-right">Qty</div>
-                <div className="text-right">Price</div>
-                <div className="text-right">Line Total</div>
-              </div>
-              {data.items.map((item) => (
-                <div key={item.id} className="grid grid-cols-[1fr_60px_100px_110px] px-3 py-2 text-sm border-t">
-                  <div>{item.desc || "Item"}</div>
-                  <div className="text-right">{item.qty}</div>
-                  <div className="text-right">${item.price.toFixed(2)}</div>
-                  <div className="text-right">${(item.qty * item.price).toFixed(2)}</div>
+            <div className="mt-4 border rounded-md overflow-x-auto">
+              <div className="min-w-[400px]">
+                <div className="grid grid-cols-[1fr_60px_100px_110px] bg-muted/50 text-sm font-medium px-3 py-2">
+                  <div>Description</div>
+                  <div className="text-right">Qty</div>
+                  <div className="text-right">Price</div>
+                  <div className="text-right">Line Total</div>
                 </div>
-              ))}
+                {data.items.map((item) => (
+                  <div key={item.id} className="grid grid-cols-[1fr_60px_100px_110px] px-3 py-2 text-sm border-t">
+                    <div className="truncate pr-2">{item.desc || "Item"}</div>
+                    <div className="text-right">{item.qty}</div>
+                    <div className="text-right">${item.price.toFixed(2)}</div>
+                    <div className="text-right">${(item.qty * item.price).toFixed(2)}</div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="mt-4 text-sm space-y-1">
