@@ -52,7 +52,8 @@ It currently includes:
 
 ## Storage model (offline-first)
 
-- Primary: IndexedDB
+- Primary (web): IndexedDB
+- Native bridge (Android/Wails): key-value bridge storage via `src/lib/platformBridge.ts`
 - Fallback: localStorage
 - Shared abstraction: `src/lib/documentStore.ts`
 - PDF bytes are currently stored in browser storage as base64 for portability.
@@ -72,8 +73,46 @@ Hardening added:
 
 - Dependency vulnerabilities: **0** (verified with `npm audit` after dependency remediation).
 - Current non-blocking issues:
-  - ESLint warnings from `react-refresh/only-export-components` in some UI helper files.
-  - Bundle size warning for a large main chunk.
+  - Vite warning from `vite:react-swc` about an `esbuild` option deprecation.
+
+## Native targets added
+
+### Android (Capacitor)
+
+Capacitor dependencies and config are now included:
+- `@capacitor/core`
+- `@capacitor/android`
+- `@capacitor/preferences`
+- `@capacitor/cli`
+- `capacitor.config.ts`
+
+Scripts:
+- `npm run cap:build`
+- `npm run cap:sync`
+- `npm run cap:android`
+
+First-time setup:
+
+```bash
+npm install
+npm run build
+npx cap add android
+npm run cap:sync
+npm run cap:android
+```
+
+### Desktop (Wails)
+
+Frontend bridge contract is scaffolded and documented in `wails/README.md`.
+
+Expected JS bridge methods from Wails backend:
+- `GetStorageItem(key)`
+- `SetStorageItem(key, value)`
+- `RemoveStorageItem(key)`
+
+Optional scripts (require Wails CLI installed globally):
+- `npm run wails:dev`
+- `npm run wails:build`
 
 ## Quick start
 
@@ -121,21 +160,25 @@ git push -u origin main
 ## What’s still missing (high impact)
 
 1. Native storage bridge
-- Add `src/lib/platformBridge.ts` for Wails/Capacitor filesystem + SQLite adapters.
-- Keep browser adapter as default fallback.
+- Add binary file APIs (read/write/delete) in Wails backend and Capacitor filesystem adapter.
+- Keep metadata in native SQLite and store large PDFs on disk.
 
 2. Large PDF optimization
 - Move large binary storage from base64-in-browser to native file storage when running on desktop/mobile shells.
 
 3. Performance and bundle splitting
-- Lazy-load heavy tool routes.
+- Keep route-level lazy loading and add per-tool component splitting.
 - Split PDF-specific code paths for faster startup.
 
-4. Reliability features
+4. Responsive polish
+- Add touch-first drag/reorder interactions for mobile PDF page ordering.
+- Improve small-screen toolbars with stacked/floating actions.
+
+5. Reliability features
 - Add autosave timeline + restore snapshots.
 - Add undo/redo action history persistence for PDF operations.
 
-5. Quality/security pipeline
+6. Quality/security pipeline
 - Add CI for lint/build/test/audit.
 - Add unit tests for `documentStore` and integration tests for tool CRUD flows.
 

@@ -1,3 +1,5 @@
+import { bridgeGetItem, bridgeRemoveItem, bridgeSetItem, detectRuntime } from "@/lib/platformBridge";
+
 export type ToolType = "business-card" | "invoice" | "pdf" | "resume";
 
 export interface DocumentRecord<TPayload = unknown> {
@@ -30,7 +32,7 @@ const DB_VERSION = 1;
 const STORE_NAME = "documents";
 const FALLBACK_KEY = "paperworks:documents:v1";
 
-const hasIndexedDb = typeof window !== "undefined" && "indexedDB" in window;
+const hasIndexedDb = typeof window !== "undefined" && "indexedDB" in window && detectRuntime() === "web";
 
 function generateId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -64,10 +66,9 @@ function idbRequest<T>(request: IDBRequest<T>): Promise<T> {
   });
 }
 
-function readFallbackStore(): DocumentRecord[] {
-  if (typeof window === "undefined") return [];
+async function readFallbackStore(): Promise<DocumentRecord[]> {
   try {
-    const raw = localStorage.getItem(FALLBACK_KEY);
+    const raw = await bridgeGetItem(FALLBACK_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as DocumentRecord[];
     return Array.isArray(parsed) ? parsed : [];
@@ -76,19 +77,22 @@ function readFallbackStore(): DocumentRecord[] {
   }
 }
 
-function writeFallbackStore(records: DocumentRecord[]) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(FALLBACK_KEY, JSON.stringify(records));
+async function writeFallbackStore(records: DocumentRecord[]) {
+  if (records.length === 0) {
+    await bridgeRemoveItem(FALLBACK_KEY);
+    return;
+  }
+  await bridgeSetItem(FALLBACK_KEY, JSON.stringify(records));
 }
 
 async function listFallback(toolType?: ToolType): Promise<DocumentRecord[]> {
-  const items = readFallbackStore();
+  const items = await readFallbackStore();
   const filtered = toolType ? items.filter((d) => d.toolType === toolType) : items;
   return filtered.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
 async function getFallback<TPayload>(id: string): Promise<DocumentRecord<TPayload> | null> {
-  const items = readFallbackStore();
+  const items = await readFallbackStore();
   const found = items.find((d) => d.id === id);
   return (found as DocumentRecord<TPayload> | undefined) ?? null;
 }
@@ -104,14 +108,14 @@ async function createFallback<TPayload>(input: CreateInput<TPayload>): Promise<D
     updatedAt: now,
   };
 
-  const items = readFallbackStore();
+  const items = await readFallbackStore();
   items.push(record as DocumentRecord);
-  writeFallbackStore(items);
+  await writeFallbackStore(items);
   return record;
 }
 
 async function updateFallback<TPayload>(id: string, input: UpdateInput<TPayload>): Promise<DocumentRecord<TPayload> | null> {
-  const items = readFallbackStore();
+  const items = await readFallbackStore();
   const index = items.findIndex((d) => d.id === id);
   if (index === -1) return null;
 
@@ -124,15 +128,15 @@ async function updateFallback<TPayload>(id: string, input: UpdateInput<TPayload>
   };
 
   items[index] = next as DocumentRecord;
-  writeFallbackStore(items);
+  await writeFallbackStore(items);
   return next;
 }
 
 async function deleteFallback(id: string): Promise<boolean> {
-  const items = readFallbackStore();
+  const items = await readFallbackStore();
   const next = items.filter((d) => d.id !== id);
   if (next.length === items.length) return false;
-  writeFallbackStore(next);
+  await writeFallbackStore(next);
   return true;
 }
 
