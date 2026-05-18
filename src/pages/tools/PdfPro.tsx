@@ -28,25 +28,62 @@ const PdfPro = () => {
   };
 
   React.useEffect(() => {
-    if (prevUrlRef.current) {
-      URL.revokeObjectURL(prevUrlRef.current);
-      prevUrlRef.current = null;
-    }
-    if (!pdfBytes) {
-      setPdfUrl(null);
-      return;
-    }
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
-    setPdfUrl(url);
-    prevUrlRef.current = url;
-    return () => {
-      if (prevUrlRef.current) {
-        URL.revokeObjectURL(prevUrlRef.current);
-        prevUrlRef.current = null;
+    // generate a preview PDF when source bytes, page order, rotations, or signature change
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const generatePreview = async () => {
+      if (!pdfBytes) {
+        if (prevUrlRef.current) {
+          URL.revokeObjectURL(prevUrlRef.current);
+          prevUrlRef.current = null;
+        }
+        setPdfUrl(null);
+        return;
+      }
+
+      try {
+        const srcDoc = await PDFDocument.load(pdfBytes);
+        const newDoc = await PDFDocument.create();
+        const copiedPages = await newDoc.copyPages(srcDoc, pageOrder.length ? pageOrder : Array.from({ length: srcDoc.getPageCount() }, (_, i) => i));
+        copiedPages.forEach((p, i) => {
+          const rotation = rotations[i] || 0;
+          if (rotation) p.setRotation((rotation / 180) * Math.PI);
+          newDoc.addPage(p);
+        });
+
+        if (signatureDataUrl) {
+          const sigBytes = await (await fetch(signatureDataUrl)).arrayBuffer();
+          const sigImage = await newDoc.embedPng(sigBytes);
+          const pages = newDoc.getPages();
+          const p = pages[0];
+          p.drawImage(sigImage, {
+            x: p.getWidth() - 160,
+            y: 40,
+            width: 120,
+            height: 40,
+          });
+        }
+
+        const out = await newDoc.save();
+        if (cancelled) return;
+        const blob = new Blob([out], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        if (prevUrlRef.current) {
+          URL.revokeObjectURL(prevUrlRef.current);
+        }
+        prevUrlRef.current = url;
+        setPdfUrl(url);
+      } catch (e) {
+        // keep original pdfUrl if generation fails
+        // console.warn('Preview generation failed', e);
       }
     };
-  }, [pdfBytes]);
+
+    // debounce generation to avoid rapid blob URL churn that aborts iframe loads
+    timer = setTimeout(() => { generatePreview(); }, 250);
+
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
+  }, [pdfBytes, pageOrder, rotations, signatureDataUrl]);
 
   const triggerFile = () => {
     fileInputRef.current?.click();
@@ -149,6 +186,17 @@ const PdfPro = () => {
       <input ref={fileInputRef} type="file" accept="application/pdf" className="hidden" onChange={(e) => handleFile(e.target.files?.[0] ?? null)} />
       <div className="flex gap-4 mb-6">
         <Button onClick={triggerFile}>Load PDF</Button>
+        <Button onClick={async () => {
+          // generate a simple 2-page sample PDF for quick testing
+          const doc = await PDFDocument.create();
+          const p1 = doc.addPage([400, 200]);
+          p1.drawText('Sample Page 1', { x: 50, y: 150 });
+          const p2 = doc.addPage([400, 200]);
+          p2.drawText('Sample Page 2', { x: 50, y: 150 });
+          const bytes = await doc.save();
+          const file = new File([bytes], 'sample.pdf', { type: 'application/pdf' });
+          await handleFile(file);
+        }}>Load Sample PDF</Button>
         <Button onClick={savePdf} disabled={!pdfBytes}>Save Edited PDF</Button>
         <Button onClick={() => { if (canvasRef.current) canvasRef.current.getContext("2d")?.clearRect(0,0,canvasRef.current.width, canvasRef.current.height); clearSignature(); }}>Clear Signature</Button>
       </div>
