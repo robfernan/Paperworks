@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import { CreditCard, FileUser, Receipt, FileEdit } from "lucide-react";
 
 const coreTools = [
@@ -19,7 +20,7 @@ const coreTools = [
     gradient: "bg-gradient-accent",
   },
   {
-    id: "invoices",
+    id: "invoice",
     name: "Invoice & Billing Suite",
     description: "Complete invoicing solution with payment tracking, reminders, and analytics",
     icon: Receipt,
@@ -48,7 +49,7 @@ const ToolsGrid = () => {
             const IconComponent = tool.icon as React.ComponentType<{ className?: string }>;
             return (
               <Card key={tool.id} className="group relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2">
-                <div className={`absolute inset-0 ${tool.gradient} opacity-5 group-hover:opacity-10 transition-opacity`} />
+                <div className={`absolute inset-0 ${tool.gradient} opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none`} />
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
                     <div className={`p-3 rounded-xl ${tool.gradient} shadow-md group-hover:shadow-glow transition-shadow flex-shrink-0`}>
@@ -58,7 +59,7 @@ const ToolsGrid = () => {
                       <h4 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">{tool.name}</h4>
                       <p className="text-muted-foreground mb-4 leading-relaxed text-sm">{tool.description}</p>
                       <Button asChild variant="outline" size="sm" className="w-full group-hover:border-primary group-hover:text-primary transition-all">
-                        <a href={`/tools/${tool.id}`}>Launch Tool</a>
+                        <Link to={`/tools/${tool.id}`}>Launch Tool</Link>
                       </Button>
                     </div>
                   </div>

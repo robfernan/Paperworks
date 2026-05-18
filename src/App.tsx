@@ -9,23 +9,25 @@ import PdfPro from "./pages/tools/PdfPro";
 import BusinessCards from "./pages/tools/BusinessCards";
 import ResumeBuilder from "./pages/tools/ResumeBuilder";
 import InvoiceCreator from "./pages/tools/InvoiceCreator";
+import Layout from "@/components/Layout";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
+      <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/tools/pdf-pro" element={<PdfPro />} />
-          <Route path="/tools/business-cards" element={<BusinessCards />} />
-          <Route path="/tools/resume" element={<ResumeBuilder />} />
-          <Route path="/tools/invoice" element={<InvoiceCreator />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Index />} />
+            <Route path="tools/pdf-pro" element={<PdfPro />} />
+            <Route path="tools/business-cards" element={<BusinessCards />} />
+            <Route path="tools/resume" element={<ResumeBuilder />} />
+            <Route path="tools/invoice" element={<InvoiceCreator />} />
+            <Route path="*" element={<NotFound />} />
+          </Route>
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

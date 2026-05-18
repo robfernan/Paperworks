@@ -4,6 +4,8 @@ import { PDFDocument, rgb } from "pdf-lib";
 const PdfPro = () => {
   const [fileName, setFileName] = React.useState<string | null>(null);
   const [pdfBytes, setPdfBytes] = React.useState<Uint8Array | null>(null);
+  const [pdfUrl, setPdfUrl] = React.useState<string | null>(null);
+  const prevUrlRef = React.useRef<string | null>(null);
   const [pageOrder, setPageOrder] = React.useState<number[]>([]);
   const [rotations, setRotations] = React.useState<Record<number, number>>({});
   const [signatureDataUrl, setSignatureDataUrl] = React.useState<string | null>(null);
@@ -23,6 +25,27 @@ const PdfPro = () => {
     setPageOrder(Array.from({ length: pages }, (_, i) => i));
     setRotations({});
   };
+
+  React.useEffect(() => {
+    if (prevUrlRef.current) {
+      URL.revokeObjectURL(prevUrlRef.current);
+      prevUrlRef.current = null;
+    }
+    if (!pdfBytes) {
+      setPdfUrl(null);
+      return;
+    }
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    setPdfUrl(url);
+    prevUrlRef.current = url;
+    return () => {
+      if (prevUrlRef.current) {
+        URL.revokeObjectURL(prevUrlRef.current);
+        prevUrlRef.current = null;
+      }
+    };
+  }, [pdfBytes]);
 
   const triggerFile = () => {
     fileInputRef.current?.click();
@@ -124,9 +147,9 @@ const PdfPro = () => {
 
       <input ref={fileInputRef} type="file" accept="application/pdf" className="hidden" onChange={(e) => handleFile(e.target.files?.[0] ?? null)} />
       <div className="flex gap-4 mb-6">
-        <button onClick={triggerFile} className="btn">Load PDF</button>
-        <button onClick={savePdf} className="btn" disabled={!pdfBytes}>Save Edited PDF</button>
-        <button onClick={() => { if (canvasRef.current) canvasRef.current.getContext("2d")?.clearRect(0,0,canvasRef.current.width, canvasRef.current.height); clearSignature(); }} className="btn">Clear Signature</button>
+        <Button onClick={triggerFile}>Load PDF</Button>
+        <Button onClick={savePdf} disabled={!pdfBytes}>Save Edited PDF</Button>
+        <Button onClick={() => { if (canvasRef.current) canvasRef.current.getContext("2d")?.clearRect(0,0,canvasRef.current.width, canvasRef.current.height); clearSignature(); }}>Clear Signature</Button>
       </div>
 
       {pageOrder.length > 0 && (
@@ -152,6 +175,14 @@ const PdfPro = () => {
         <canvas ref={canvasRef} width={600} height={120} className="border" />
         <div className="mt-2 text-sm text-muted-foreground">Signature will be embedded on the first page when saving.</div>
       </div>
+      {pdfUrl && (
+        <div className="mt-8">
+          <h3 className="font-medium mb-2">PDF Preview</h3>
+          <div className="border">
+            <iframe title="pdf-preview" src={pdfUrl} style={{ width: '100%', height: 600 }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
