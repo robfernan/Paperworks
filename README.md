@@ -14,6 +14,7 @@ It currently includes:
 <div align="center">
   <img src="assets/screenshots/wails_desktop.png" alt="Wails Desktop Client" width="45%">
   <img src="assets/screenshots/wails_responsiveness.png" alt="Invoice Studio Wails" width="45%">
+  <img src="assets/screenshots/capacitor_mobile.png" alt="Invoice Studio Capacitor" width="45%">
 </div>
 
 ## Core principles
@@ -22,6 +23,18 @@ It currently includes:
 - Works offline first
 - User data stays local by default
 - Cross-platform architecture (Web now, Wails/Capacitor next)
+
+## Release: Multi-platform Beta
+
+- Platforms supported: **Web (Vite)**, **Desktop (Wails)**, and **Mobile (Capacitor Android)** — all confirmed working in dev and production builds.
+- Storage model: web-first (IndexedDB + localStorage fallback). We intentionally avoid introducing separate native storage layers to keep the application simple and consistent across platforms.
+- How to run each platform:
+  - Web (dev): `npm run dev -- --host`
+  - Web (prod build): `npm run build`
+  - Desktop (Wails dev): `wails dev` (requires Wails CLI & Go)
+  - Mobile (Capacitor Android): `npm run build` then `npx cap sync android` and `npx cap open android` to run in Android Studio
+
+This release focuses on a single, portable storage model and consistent UX across all platforms so users can jump between web, desktop and mobile without migration friction.
 
 ## Features
 
