@@ -1,6 +1,22 @@
-import { bridgeGetItem, bridgeRemoveItem, bridgeSetItem, detectRuntime } from "@/lib/platformBridge";
+import {
+  bridgeGetItem,
+  bridgeRemoveItem,
+  bridgeSetItem,
+  bridgeSaveBinary,
+  bridgeReadBinary,
+  bridgeDeleteBinary,
+  detectRuntime,
+} from "@/lib/platformBridge";
 
 export type ToolType = "business-card" | "invoice" | "pdf" | "resume";
+
+export interface DocumentSnapshot<TPayload = unknown> {
+  id: string;
+  documentId: string;
+  label: string;
+  createdAt: string;
+  payload: TPayload;
+}
 
 export interface DocumentRecord<TPayload = unknown> {
   id: string;
@@ -9,32 +25,43 @@ export interface DocumentRecord<TPayload = unknown> {
   payload: TPayload;
   createdAt: string;
   updatedAt: string;
+  version?: number;
+  tags?: string[];
+  isFavorite?: boolean;
 }
 
-interface CreateInput<TPayload> {
+export interface CreateInput<TPayload> {
   toolType: ToolType;
   title: string;
   payload: TPayload;
+  tags?: string[];
+  isFavorite?: boolean;
 }
 
-interface UpdateInput<TPayload> {
+export interface UpdateInput<TPayload> {
   title?: string;
   payload?: TPayload;
+  tags?: string[];
+  isFavorite?: boolean;
+  createSnapshot?: boolean;
+  snapshotLabel?: string;
 }
 
-type LegacyMigrationReport = {
+export type LegacyMigrationReport = {
   migrated: number;
   skipped: number;
 };
 
 const DB_NAME = "paperworks-db";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = "documents";
-const FALLBACK_KEY = "paperworks:documents:v1";
+const SNAPSHOTS_STORE = "document_snapshots";
+const FALLBACK_KEY = "paperworks:documents:v2";
+const SNAPSHOTS_FALLBACK_KEY = "paperworks:snapshots:v2";
 
-const hasIndexedDb = typeof window !== "undefined" && "indexedDB" in window && detectRuntime() === "web";
+const hasIndexedDb = () => typeof window !== "undefined" && typeof indexedDB !== "undefined" && Boolean(window.indexedDB);
 
-function generateId() {
+function generateId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
   }
@@ -43,14 +70,23 @@ function generateId() {
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
+    if (!hasIndexedDb()) {
+      reject(new Error("IndexedDB not available"));
+      return;
+    }
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event) => {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
         store.createIndex("toolType", "toolType", { unique: false });
         store.createIndex("updatedAt", "updatedAt", { unique: false });
+      }
+      if (!db.objectStoreNames.contains(SNAPSHOTS_STORE)) {
+        const snapStore = db.createObjectStore(SNAPSHOTS_STORE, { keyPath: "id" });
+        snapStore.createIndex("documentId", "documentId", { unique: false });
+        snapStore.createIndex("createdAt", "createdAt", { unique: false });
       }
     };
 
@@ -66,10 +102,22 @@ function idbRequest<T>(request: IDBRequest<T>): Promise<T> {
   });
 }
 
+/* =========================================================================
+   Fallback Local/Bridge Store (when IndexedDB is not used/available)
+   ========================================================================= */
+
 async function readFallbackStore(): Promise<DocumentRecord[]> {
   try {
     const raw = await bridgeGetItem(FALLBACK_KEY);
-    if (!raw) return [];
+    if (!raw) {
+      // Legacy v1 migration fallback
+      const v1 = await bridgeGetItem("paperworks:documents:v1");
+      if (v1) {
+        const parsedV1 = JSON.parse(v1) as DocumentRecord[];
+        if (Array.isArray(parsedV1)) return parsedV1;
+      }
+      return [];
+    }
     const parsed = JSON.parse(raw) as DocumentRecord[];
     return Array.isArray(parsed) ? parsed : [];
   } catch {
@@ -85,64 +133,34 @@ async function writeFallbackStore(records: DocumentRecord[]) {
   await bridgeSetItem(FALLBACK_KEY, JSON.stringify(records));
 }
 
-async function listFallback(toolType?: ToolType): Promise<DocumentRecord[]> {
-  const items = await readFallbackStore();
-  const filtered = toolType ? items.filter((d) => d.toolType === toolType) : items;
-  return filtered.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+async function readFallbackSnapshots(): Promise<DocumentSnapshot[]> {
+  try {
+    const raw = await bridgeGetItem(SNAPSHOTS_FALLBACK_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as DocumentSnapshot[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
-async function getFallback<TPayload>(id: string): Promise<DocumentRecord<TPayload> | null> {
-  const items = await readFallbackStore();
-  const found = items.find((d) => d.id === id);
-  return (found as DocumentRecord<TPayload> | undefined) ?? null;
+async function writeFallbackSnapshots(snapshots: DocumentSnapshot[]) {
+  if (snapshots.length === 0) {
+    await bridgeRemoveItem(SNAPSHOTS_FALLBACK_KEY);
+    return;
+  }
+  await bridgeSetItem(SNAPSHOTS_FALLBACK_KEY, JSON.stringify(snapshots));
 }
 
-async function createFallback<TPayload>(input: CreateInput<TPayload>): Promise<DocumentRecord<TPayload>> {
-  const now = new Date().toISOString();
-  const record: DocumentRecord<TPayload> = {
-    id: generateId(),
-    toolType: input.toolType,
-    title: input.title,
-    payload: input.payload,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  const items = await readFallbackStore();
-  items.push(record as DocumentRecord);
-  await writeFallbackStore(items);
-  return record;
-}
-
-async function updateFallback<TPayload>(id: string, input: UpdateInput<TPayload>): Promise<DocumentRecord<TPayload> | null> {
-  const items = await readFallbackStore();
-  const index = items.findIndex((d) => d.id === id);
-  if (index === -1) return null;
-
-  const current = items[index] as DocumentRecord<TPayload>;
-  const next: DocumentRecord<TPayload> = {
-    ...current,
-    title: input.title ?? current.title,
-    payload: input.payload ?? current.payload,
-    updatedAt: new Date().toISOString(),
-  };
-
-  items[index] = next as DocumentRecord;
-  await writeFallbackStore(items);
-  return next;
-}
-
-async function deleteFallback(id: string): Promise<boolean> {
-  const items = await readFallbackStore();
-  const next = items.filter((d) => d.id !== id);
-  if (next.length === items.length) return false;
-  await writeFallbackStore(next);
-  return true;
-}
+/* =========================================================================
+   Primary Document CRUD Layer
+   ========================================================================= */
 
 export async function listDocuments<TPayload = unknown>(toolType?: ToolType): Promise<DocumentRecord<TPayload>[]> {
   if (!hasIndexedDb) {
-    return listFallback(toolType) as Promise<DocumentRecord<TPayload>[]>;
+    const items = await readFallbackStore();
+    const filtered = toolType ? items.filter((d) => d.toolType === toolType) : items;
+    return filtered.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)) as DocumentRecord<TPayload>[];
   }
 
   try {
@@ -150,21 +168,22 @@ export async function listDocuments<TPayload = unknown>(toolType?: ToolType): Pr
     const tx = db.transaction(STORE_NAME, "readonly");
     const store = tx.objectStore(STORE_NAME);
 
-    const request = toolType
-      ? store.index("toolType").getAll(toolType)
-      : store.getAll();
-
+    const request = toolType ? store.index("toolType").getAll(toolType) : store.getAll();
     const items = (await idbRequest(request)) as DocumentRecord<TPayload>[];
     db.close();
     return items.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   } catch {
-    return listFallback(toolType) as Promise<DocumentRecord<TPayload>[]>;
+    const items = await readFallbackStore();
+    const filtered = toolType ? items.filter((d) => d.toolType === toolType) : items;
+    return filtered.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)) as DocumentRecord<TPayload>[];
   }
 }
 
 export async function getDocument<TPayload = unknown>(id: string): Promise<DocumentRecord<TPayload> | null> {
   if (!hasIndexedDb) {
-    return getFallback<TPayload>(id);
+    const items = await readFallbackStore();
+    const found = items.find((d) => d.id === id);
+    return (found as DocumentRecord<TPayload> | undefined) ?? null;
   }
 
   try {
@@ -175,24 +194,32 @@ export async function getDocument<TPayload = unknown>(id: string): Promise<Docum
     db.close();
     return item ?? null;
   } catch {
-    return getFallback<TPayload>(id);
+    const items = await readFallbackStore();
+    const found = items.find((d) => d.id === id);
+    return (found as DocumentRecord<TPayload> | undefined) ?? null;
   }
 }
 
 export async function createDocument<TPayload>(input: CreateInput<TPayload>): Promise<DocumentRecord<TPayload>> {
-  if (!hasIndexedDb) {
-    return createFallback(input);
-  }
-
   const now = new Date().toISOString();
   const record: DocumentRecord<TPayload> = {
     id: generateId(),
     toolType: input.toolType,
-    title: input.title,
+    title: input.title.trim() || "Untitled Document",
     payload: input.payload,
     createdAt: now,
     updatedAt: now,
+    version: 1,
+    tags: input.tags ?? [],
+    isFavorite: input.isFavorite ?? false,
   };
+
+  if (!hasIndexedDb) {
+    const items = await readFallbackStore();
+    items.push(record as DocumentRecord);
+    await writeFallbackStore(items);
+    return record;
+  }
 
   try {
     const db = await openDb();
@@ -208,34 +235,56 @@ export async function createDocument<TPayload>(input: CreateInput<TPayload>): Pr
     db.close();
     return record;
   } catch {
-    return createFallback(input);
+    const items = await readFallbackStore();
+    items.push(record as DocumentRecord);
+    await writeFallbackStore(items);
+    return record;
   }
 }
 
-export async function updateDocument<TPayload>(id: string, input: UpdateInput<TPayload>): Promise<DocumentRecord<TPayload> | null> {
+export async function updateDocument<TPayload>(
+  id: string,
+  input: UpdateInput<TPayload>
+): Promise<DocumentRecord<TPayload> | null> {
+  const current = await getDocument<TPayload>(id);
+  if (!current) return null;
+
+  // If a snapshot was requested, preserve the current state in history
+  if (input.createSnapshot) {
+    await saveDocumentSnapshot({
+      documentId: id,
+      label: input.snapshotLabel || `Snapshot v${current.version || 1}`,
+      payload: current.payload,
+    });
+  }
+
+  const nextVersion = (current.version || 1) + 1;
+  const now = new Date().toISOString();
+
+  const next: DocumentRecord<TPayload> = {
+    ...current,
+    title: input.title !== undefined ? (input.title.trim() || current.title) : current.title,
+    payload: input.payload !== undefined ? input.payload : current.payload,
+    tags: input.tags !== undefined ? input.tags : current.tags,
+    isFavorite: input.isFavorite !== undefined ? input.isFavorite : current.isFavorite,
+    version: nextVersion,
+    updatedAt: now,
+  };
+
   if (!hasIndexedDb) {
-    return updateFallback(id, input);
+    const items = await readFallbackStore();
+    const idx = items.findIndex((d) => d.id === id);
+    if (idx !== -1) {
+      items[idx] = next as DocumentRecord;
+      await writeFallbackStore(items);
+    }
+    return next;
   }
 
   try {
     const db = await openDb();
     const tx = db.transaction(STORE_NAME, "readwrite");
-    const store = tx.objectStore(STORE_NAME);
-    const current = (await idbRequest(store.get(id))) as DocumentRecord<TPayload> | undefined;
-
-    if (!current) {
-      db.close();
-      return null;
-    }
-
-    const next: DocumentRecord<TPayload> = {
-      ...current,
-      title: input.title ?? current.title,
-      payload: input.payload ?? current.payload,
-      updatedAt: new Date().toISOString(),
-    };
-
-    store.put(next as DocumentRecord);
+    tx.objectStore(STORE_NAME).put(next as DocumentRecord);
 
     await new Promise<void>((resolve, reject) => {
       tx.oncomplete = () => resolve();
@@ -246,33 +295,63 @@ export async function updateDocument<TPayload>(id: string, input: UpdateInput<TP
     db.close();
     return next;
   } catch {
-    return updateFallback(id, input);
+    const items = await readFallbackStore();
+    const idx = items.findIndex((d) => d.id === id);
+    if (idx !== -1) {
+      items[idx] = next as DocumentRecord;
+      await writeFallbackStore(items);
+    }
+    return next;
   }
 }
 
 export async function deleteDocument(id: string): Promise<boolean> {
+  const existing = await getDocument(id);
+  if (!existing) return false;
+
+  // Clean up any binary payload references if it's a PDF project with storageRef
+  if (existing.toolType === "pdf" && typeof existing.payload === "object" && existing.payload !== null) {
+    const p = existing.payload as { storageRef?: string };
+    if (p.storageRef) {
+      await bridgeDeleteBinary(p.storageRef);
+    }
+  }
+
   if (!hasIndexedDb) {
-    return deleteFallback(id);
+    const items = await readFallbackStore();
+    const next = items.filter((d) => d.id !== id);
+    if (next.length === items.length) return false;
+    await writeFallbackStore(next);
+    return true;
   }
 
   try {
-    const existing = await getDocument(id);
-    if (!existing) return false;
-
     const db = await openDb();
-    const tx = db.transaction(STORE_NAME, "readwrite");
+    const tx = db.transaction([STORE_NAME, SNAPSHOTS_STORE], "readwrite");
     tx.objectStore(STORE_NAME).delete(id);
+
+    // Also clean up snapshots for this document
+    const snapStore = tx.objectStore(SNAPSHOTS_STORE);
+    const snapIndex = snapStore.index("documentId");
+    const snapReq = snapIndex.getAllKeys(id);
+
+    snapReq.onsuccess = () => {
+      const keys = snapReq.result;
+      keys.forEach((k) => snapStore.delete(k));
+    };
 
     await new Promise<void>((resolve, reject) => {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error);
     });
 
     db.close();
     return true;
   } catch {
-    return deleteFallback(id);
+    const items = await readFallbackStore();
+    const next = items.filter((d) => d.id !== id);
+    await writeFallbackStore(next);
+    return true;
   }
 }
 
@@ -282,17 +361,118 @@ export async function duplicateDocument<TPayload = unknown>(id: string): Promise
 
   return createDocument<TPayload>({
     toolType: source.toolType,
-    title: `${source.title} (copy)`,
-    payload: source.payload,
+    title: `${source.title} (Copy)`,
+    payload: JSON.parse(JSON.stringify(source.payload)) as TPayload,
+    tags: source.tags ? [...source.tags] : [],
+    isFavorite: false,
   });
 }
+
+/* =========================================================================
+   Document Snapshot Timeline
+   ========================================================================= */
+
+export async function saveDocumentSnapshot<TPayload>(input: {
+  documentId: string;
+  label: string;
+  payload: TPayload;
+}): Promise<DocumentSnapshot<TPayload>> {
+  const snapshot: DocumentSnapshot<TPayload> = {
+    id: generateId(),
+    documentId: input.documentId,
+    label: input.label,
+    createdAt: new Date().toISOString(),
+    payload: JSON.parse(JSON.stringify(input.payload)) as TPayload,
+  };
+
+  if (!hasIndexedDb) {
+    const snaps = await readFallbackSnapshots();
+    snaps.push(snapshot as DocumentSnapshot);
+    // Keep max 50 snapshots
+    if (snaps.length > 50) snaps.splice(0, snaps.length - 50);
+    await writeFallbackSnapshots(snaps);
+    return snapshot;
+  }
+
+  try {
+    const db = await openDb();
+    const tx = db.transaction(SNAPSHOTS_STORE, "readwrite");
+    tx.objectStore(SNAPSHOTS_STORE).put(snapshot as DocumentSnapshot);
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+    return snapshot;
+  } catch {
+    const snaps = await readFallbackSnapshots();
+    snaps.push(snapshot as DocumentSnapshot);
+    await writeFallbackSnapshots(snaps);
+    return snapshot;
+  }
+}
+
+export async function listDocumentSnapshots<TPayload = unknown>(
+  documentId: string
+): Promise<DocumentSnapshot<TPayload>[]> {
+  if (!hasIndexedDb) {
+    const snaps = await readFallbackSnapshots();
+    return snaps
+      .filter((s) => s.documentId === documentId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)) as DocumentSnapshot<TPayload>[];
+  }
+
+  try {
+    const db = await openDb();
+    const tx = db.transaction(SNAPSHOTS_STORE, "readonly");
+    const store = tx.objectStore(SNAPSHOTS_STORE);
+    const index = store.index("documentId");
+    const req = index.getAll(documentId);
+    const snaps = (await idbRequest(req)) as DocumentSnapshot<TPayload>[];
+    db.close();
+    return snaps.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  } catch {
+    const snaps = await readFallbackSnapshots();
+    return snaps
+      .filter((s) => s.documentId === documentId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)) as DocumentSnapshot<TPayload>[];
+  }
+}
+
+export async function deleteDocumentSnapshot(snapshotId: string): Promise<boolean> {
+  if (!hasIndexedDb) {
+    const snaps = await readFallbackSnapshots();
+    const next = snaps.filter((s) => s.id !== snapshotId);
+    if (next.length === snaps.length) return false;
+    await writeFallbackSnapshots(next);
+    return true;
+  }
+
+  try {
+    const db = await openDb();
+    const tx = db.transaction(SNAPSHOTS_STORE, "readwrite");
+    tx.objectStore(SNAPSHOTS_STORE).delete(snapshotId);
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/* =========================================================================
+   Legacy Storage Migration
+   ========================================================================= */
 
 export async function migrateLegacyLocalStorage(): Promise<LegacyMigrationReport> {
   if (typeof window === "undefined") {
     return { migrated: 0, skipped: 0 };
   }
 
-  const migrationFlag = "paperworks:legacy-migrated:v1";
+  const migrationFlag = "paperworks:legacy-migrated:v2";
   if (localStorage.getItem(migrationFlag) === "1") {
     return { migrated: 0, skipped: 0 };
   }
@@ -301,6 +481,7 @@ export async function migrateLegacyLocalStorage(): Promise<LegacyMigrationReport
     { key: "paperworks:business-card", toolType: "business-card", title: "Migrated Business Card" },
     { key: "paperworks:invoice", toolType: "invoice", title: "Migrated Invoice" },
     { key: "paperworks:resume", toolType: "resume", title: "Migrated Resume" },
+    { key: "paperworks:pdf", toolType: "pdf", title: "Migrated PDF Project" },
   ];
 
   let migrated = 0;
@@ -325,6 +506,29 @@ export async function migrateLegacyLocalStorage(): Promise<LegacyMigrationReport
       }
     } catch {
       skipped += 1;
+    }
+  }
+
+  // Also migrate v1 document list if present
+  const v1List = localStorage.getItem("paperworks:documents:v1");
+  if (v1List) {
+    try {
+      const parsed = JSON.parse(v1List) as DocumentRecord[];
+      if (Array.isArray(parsed)) {
+        for (const item of parsed) {
+          const exists = await getDocument(item.id);
+          if (!exists) {
+            await createDocument({
+              toolType: item.toolType,
+              title: item.title,
+              payload: item.payload,
+            });
+            migrated += 1;
+          }
+        }
+      }
+    } catch {
+      // ignore
     }
   }
 
