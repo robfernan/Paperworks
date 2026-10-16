@@ -1,222 +1,166 @@
-# Paperworks
+# Paperworks 📄💼
+> **Offline-First Cross-Platform Business Automation & Publishing Workstation**  
+> *A free, open-source alternative to Adobe Acrobat Pro, InDesign, and recurring SaaS billing software.*
 
-Paperworks is an offline-first, open-source document suite built with React + TypeScript.
+[![CI/CD Pipeline](https://github.com/robfernan/Paperworks/actions/workflows/ci.yml/badge.svg)](https://github.com/robfernan/Paperworks/actions)
+[![TypeScript 5.x](https://img.shields.io/badge/TypeScript-5.x-blue.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React 18](https://img.shields.io/badge/React-18.x-61dafb.svg?logo=react&logoColor=black)](https://react.dev/)
+[![Vite 8](https://img.shields.io/badge/Vite-8.x-646CFF.svg?logo=vite&logoColor=white)](https://vite.dev/)
+[![Wails v2](https://img.shields.io/badge/Desktop-Wails_v2_Go-00ADD8.svg?logo=go&logoColor=white)](https://wails.io/)
+[![Capacitor Android](https://img.shields.io/badge/Mobile-Capacitor_Android-119EFF.svg?logo=capacitor&logoColor=white)](https://capacitorjs.com/)
+[![Vitest](https://img.shields.io/badge/Tested_with-Vitest-FCC72B.svg?logo=vitest&logoColor=black)](https://vitest.dev/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-It currently includes:
-- Business Card Studio
-- Invoice Studio
-- Resume Builder
-- PDF Pro
-- Document Vault (cross-tool manager)
+---
 
-## Screenshots
+## 🌟 Executive Overview
+
+**Paperworks** is an enterprise-grade document creation and manipulation workstation designed to operate **100% offline with zero cloud dependency and zero telemetry**. It delivers high-fidelity visual layout engines, native Word `.docx` generators, prepress print-ready PDF compilers, and advanced PDF annotation tools across Web, Desktop (Windows, macOS, Linux via Wails v2 + Go), and Mobile (Android via Capacitor).
 
 <div align="center">
-  <img src="assets/screenshots/wails_desktop.png" alt="Wails Desktop Client" width="45%">
-  <img src="assets/screenshots/wails_responsiveness.png" alt="Invoice Studio Wails" width="45%">
-  <img src="assets/screenshots/capacitor_mobile.png" alt="Invoice Studio Capacitor" width="45%">
+  <img src="assets/screenshots/wails_desktop.png" alt="Wails Desktop Client" width="48%">
+  <img src="assets/screenshots/wails_responsiveness.png" alt="Invoice Studio Wails" width="48%">
 </div>
 
-## Core principles
+---
 
-- Free and open source
-- Works offline first
-- User data stays local by default
-- Cross-platform architecture (Web now, Wails/Capacitor next)
+## 🏗️ Architecture & Storage Engine
 
-## Release: Multi-platform Beta
+Paperworks utilizes a unified, multi-tiered offline storage engine designed to prevent memory leaks, browser string overhead, and UI thread stutter.
 
-- Platforms supported: **Web (Vite)**, **Desktop (Wails)**, and **Mobile (Capacitor Android)** — all confirmed working in dev and production builds.
-- Storage model: web-first (IndexedDB + localStorage fallback). We intentionally avoid introducing separate native storage layers to keep the application simple and consistent across platforms.
-- How to run each platform:
-  - Web (dev): `npm run dev -- --host`
-  - Web (prod build): `npm run build`
-  - Desktop (Wails dev): `wails dev` (requires Wails CLI & Go)
-  - Mobile (Capacitor Android): `npm run build` then `npx cap sync android` and `npx cap open android` to run in Android Studio
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       Paperworks Presentation Layer                         │
+│       React 18  •  TypeScript  •  Tailwind CSS  •  shadcn-ui Components      │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │
+┌──────────────────────────────────────▼──────────────────────────────────────┐
+│                  Unified Document Core & Command Engine                     │
+│   • Universal Command Palette (Ctrl+K / ⌘K)                                 │
+│   • Deep Undo/Redo Transaction History (Ctrl+Z / Ctrl+Y)                    │
+│   • Autosave Snapshot Timeline (IndexedDB v3 Stores)                        │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │
+┌──────────────────────────────────────▼──────────────────────────────────────┐
+│                    Platform Storage Bridge Abstraction                      │
+│                           (src/lib/platformBridge.ts)                       │
+├───────────────────────────────┬───────────────────────────────┬─────────────┤
+│        Desktop (Wails)        │       Mobile (Capacitor)      │   Web/PWA   │
+│   Go Native Binary Filesystem │   Capacitor Preferences API   │  IndexedDB  │
+│    data/blobs direct disk I/O │   + Local Storage Fallback    │ Blob Store  │
+└───────────────────────────────┴───────────────────────────────┴─────────────┘
+```
 
-This release focuses on a single, portable storage model and consistent UX across all platforms so users can jump between web, desktop and mobile without migration friction.
+### Key Architectural Tenets:
+1. **Binary Offloading:** Heavy PDF payloads are decoupled from document metadata. On desktop shells, binaries are written directly to `data/blobs` on the local disk via Go backend routines (`SaveBinaryFile`, `ReadBinaryFile`), avoiding multi-megabyte base64 strings in JSON stores. On web runtimes, binaries are managed in dedicated IndexedDB object stores.
+2. **Snapshot Revision History:** Every editor provides deep-state undo/redo transaction buffers and visual checkpoint timelines (`SnapshotTimeline`), allowing users to inspect and restore past revisions at any point.
+3. **Universal Command Palette:** Pressing `Cmd+K` or `Ctrl+K` brings up global search across all documents, tools, and rapid document creation shortcuts.
 
-## Features
+---
 
-### 1) Business Card Studio
-- Multi-document CRUD (create, open, update, duplicate, delete)
-- Theme presets and text alignment presets
-- Front/back card layouts
-- Logo upload
-- PDF export
+## 🚀 Professional Feature Suites
 
-### 2) Invoice Studio
-- Multi-document CRUD
-- Company/client sections and invoice metadata
-- Dynamic line items with totals, tax, and discount
-- Logo upload
-- PDF export
+### 1. 💼 Invoice & Proposals Studio Pro
+- **Reusable Item/Service Catalog:** Save preset goods and services with unique SKUs, descriptions, and default rates for instantaneous 1-click line-item insertion.
+- **Multi-Currency Support:** Seamlessly switch between global currencies (`$`, `€`, `£`, `¥`, `CHF`, `C$`, `A$`, `₹`).
+- **Deposit & Down-Payment Tracking:** Log partial payments and deposits, dynamically calculating the real-time **Balance Due**.
+- **Dual Native Export:** Generates print-ready PDFs and editable, professionally formatted Word documents (`.docx`) with embedded financial tables and company headers.
 
-### 3) Resume Builder
-- Multi-document CRUD
-- Dynamic experience/education/project sections
-- Theme presets
-- PDF export
+### 2. 📑 PDF Pro Advanced Annotation Suite
+- **Asynchronous Chunked Processing:** High-performance PDF processing engine with progress bars for large documents.
+- **Interactive Annotation Suite:** Overlay checkmarks, shape rectangles, highlight boxes, circles, and sticky text notes with customizable colors and opacity.
+- **Digital Signature Library:** Integrated HTML5 signature pad with a saved signature vault for inserting reusable digital stamps.
+- **Administrative Stamps & Cryptographic Sealing:** One-click insertion of official seals (`APPROVED`, `CONFIDENTIAL`, `VOID`, `FINAL DRAFT`) and cryptographic signature placeholder metadata.
+- **Prepress Page Manipulator:** Touch-friendly and drag-and-drop page reordering, individual page rotation (90° CW/CCW), and page extraction.
+- **Exact Coordinate Mapping:** All annotations map directly to PDF coordinate space and are permanently compiled into exported PDF bytes via `pdf-lib`.
 
-### 4) PDF Pro
-- Multi-project CRUD
-- Load PDF and preview edited output
-- Reorder pages and rotate pages
-- Draw signature and stamp first page
-- Download edited PDF
+### 3. 📄 Resume & Executive CV Studio
+- **Template & Typography Engine:** Switch typography hierarchies between **Modern Sans** (Inter), **Executive Serif** (Georgia/Times), and **Technical Mono** (Courier).
+- **Theme Palettes:** Curated color themes including *Modern Sky*, *Classic Slate*, *Executive Blue*, *Minimalist Mono*, and *Forest Emerald*.
+- **Density Controls:** One-click toggle between standard comfortable spacing and **Compact 1-Page Layout**.
+- **Native Word Export:** Instant export to `.docx` retaining typography fonts and accent colors, alongside vector PDF rendering.
 
-### 5) Document Vault
-- Unified library for all saved tool documents
-- Filter by tool type
-- Deep-link open into each editor with `?doc=<id>`
+### 4. 📇 Business Card Studio Pro (InDesign Grade)
+- **Prepress 1/8" Print Bleed:** Toggleable 0.125" print bleed boundary exporting standard commercial 3.75" × 2.25" sheets complete with **corner crop marks**.
+- **Safe Margin Guides:** Inset 0.125" cyan safety guides ensuring all vital typography avoids print guillotine trimming.
+- **Granular Coordinate Controls:** Precision ±0.05" X/Y coordinate nudge buttons with snap-to-grid alignment.
+- **Multi-Layer Edge Accents:** Customizable edge accent stripes (Left, Top, Bottom) in luxury hues (Amber Gold, Royal Indigo, Emerald Green, Crimson Red, Platinum).
+- **Curated Finishes:** Simulates physical card stocks: *Studio White*, *Bone Stock Ivory*, *Eggshell Linen*, *Obsidian Luxury*, and *Brushed Platinum*.
 
-## Storage model (offline-first)
+### 5. 🗄️ Document Vault
+- Centralized repository of all saved invoices, resumes, business cards, and PDF projects.
+- Real-time search, filter by tool type, count statistics, and one-click JSON backup export/import.
 
-- Primary (web): IndexedDB
-- Native bridge (Android/Wails): key-value bridge storage via `src/lib/platformBridge.ts`
-- Fallback: localStorage
-- Shared abstraction: `src/lib/documentStore.ts`
-- PDF bytes are currently stored in browser storage as base64 for portability.
+---
 
-## Why load/upload can look like a download
+## 🛠️ Getting Started & Local Development
 
-In browsers, file inputs and PDF previews may create temporary object URLs/blobs to render local files safely. This can appear like a duplicate file event depending on browser/device behavior.
+### Prerequisites
+- **Node.js:** v20.x or higher
+- **npm:** v10.x or higher
+- **Go:** v1.22+ (for Wails desktop builds)
 
-What is expected in Paperworks:
-- Loading a file should only import into app state.
-- A real file download should only happen when you click explicit export actions (for example `Download Edited PDF` or PDF export buttons).
-
-Hardening added:
-- App `Button` now defaults to `type="button"` unless explicitly overridden, preventing accidental form submissions that can trigger unintended behavior in some flows.
-
-## Security status
-
-- Dependency vulnerabilities: **0** (verified with `npm audit` after dependency remediation).
-- Current non-blocking issues:
-  - Vite warning from `vite:react-swc` about an `esbuild` option deprecation.
-
-## Native targets added
-
-### Android (Capacitor)
-
-Capacitor dependencies and config are now included:
-- `@capacitor/core`
-- `@capacitor/android`
-- `@capacitor/preferences`
-- `@capacitor/cli`
-- `capacitor.config.ts`
-
-Scripts:
-- `npm run cap:build`
-- `npm run cap:sync`
-- `npm run cap:android`
-
-First-time setup:
-
+### Installation
 ```bash
+# Clone repository
+git clone https://github.com/robfernan/Paperworks.git
+cd Paperworks
+
+# Install dependencies
 npm install
-npm run build
-npx cap add android
-npm run cap:sync
+```
+
+### Running the Web App (Vite)
+```bash
+npm run dev
+# App will be accessible at http://localhost:5173
+```
+
+### Running Desktop Shell (Wails + Go)
+```bash
+# Requires Wails CLI installed globally (go install github.com/wailsapp/wails/v2/cmd/wails@latest)
+npm run wails:dev
+```
+
+### Running Mobile Target (Capacitor Android)
+```bash
+# Build production web bundle and sync native Android project
+npm run cap:build
+
+# Open project in Android Studio
 npm run cap:android
 ```
 
-### Desktop (Wails)
+---
 
-Frontend bridge contract is scaffolded and documented in `wails/README.md`.
+## 🧪 Testing & Verification
 
-Expected JS bridge methods from Wails backend:
-- `GetStorageItem(key)`
-- `SetStorageItem(key, value)`
-- `RemoveStorageItem(key)`
-
-Optional scripts (require Wails CLI installed globally):
-- `npm run wails:dev`
-- `npm run wails:build`
-
-## Quick start
-
-Requirements:
-- Node.js 20+
-- npm 10+
+The Paperworks test suite is powered by **Vitest**:
 
 ```bash
-git clone https://github.com/robfernan/Paperworks.git
-cd Paperworks
-npm install
-npm run dev -- --host
-```
+# Run all unit and integration tests
+npm test
 
-Build production assets:
+# Run tests in watch mode
+npm run test:watch
 
-```bash
+# TypeScript typechecking
+npm run typecheck
+
+# Production bundle compilation
 npm run build
 ```
 
-Lint:
+---
 
-```bash
-npm run lint
-```
+## 🔒 Privacy, Security & Data Sovereignty
 
-## Update to GitHub
+- **Zero Cloud Footprint:** No accounts, no subscriptions, no tracking pixels, and zero outbound network telemetries.
+- **Local Native Disk Storage:** Your financial records, client lists, signatures, and confidential PDF agreements remain on your hardware under your control.
+- **Pre-Press Compliant:** Output PDFs conform to PDF standards compatible with any commercial print shop.
 
-If you already have remote `origin` configured:
+---
 
-```bash
-git add .
-git commit -m "chore: security updates, docs refresh, and offline-suite hardening"
-git push origin main
-```
+## 📄 License
 
-If no remote exists yet:
-
-```bash
-git remote add origin https://github.com/<your-user>/<your-repo>.git
-git branch -M main
-git push -u origin main
-```
-
-## What’s still missing (high impact)
-
-1. Native storage bridge
-- Add binary file APIs (read/write/delete) in Wails backend and Capacitor filesystem adapter.
-- Keep metadata in native SQLite and store large PDFs on disk.
-
-2. Large PDF optimization
-- Move large binary storage from base64-in-browser to native file storage when running on desktop/mobile shells.
-
-3. Performance and bundle splitting
-- Keep route-level lazy loading and add per-tool component splitting.
-- Split PDF-specific code paths for faster startup.
-
-4. Responsive polish
-- Add touch-first drag/reorder interactions for mobile PDF page ordering.
-- Improve small-screen toolbars with stacked/floating actions.
-
-5. Reliability features
-- Add autosave timeline + restore snapshots.
-- Add undo/redo action history persistence for PDF operations.
-
-6. Quality/security pipeline
-- Add CI for lint/build/test/audit.
-- Add unit tests for `documentStore` and integration tests for tool CRUD flows.
-
-## Recommended cross-platform stack
-
-- Web/PWA: current Vite + React stack
-- Desktop: Wails + Go backend for filesystem and PDF batch operations
-- Mobile: Capacitor + Filesystem/SQLite plugins
-- Shared app core: React UI + adapter-based storage/services
-
-## Tech stack
-
-- React 18 + TypeScript
-- Vite
-- Tailwind CSS + shadcn-ui
-- `pdf-lib` and `jspdf`
-- IndexedDB/localStorage persistence
-
-## License
-
-Paperworks © 2026
+Paperworks is licensed under the [MIT License](LICENSE). Built for the community, businesses, and creators everywhere.

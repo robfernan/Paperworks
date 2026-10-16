@@ -37,6 +37,24 @@ export interface DigitalSignaturePlaceholder {
   height: number;
 }
 
+export type AnnotationType = "checkmark" | "rectangle" | "circle" | "freehand" | "text" | "signature";
+
+export interface PdfAnnotation {
+  id: string;
+  type: AnnotationType;
+  pageIndex: number; // 0-indexed page in document
+  xPercent: number; // 0 - 100 percentage from left
+  yPercent: number; // 0 - 100 percentage from bottom
+  widthPercent: number;
+  heightPercent: number;
+  color?: "red" | "green" | "blue" | "slate" | "amber" | "black";
+  strokeWidth?: number;
+  opacity?: number;
+  text?: string;
+  signatureDataUrl?: string;
+  points?: Array<{ xPercent: number; yPercent: number }>;
+}
+
 export interface TransformPdfOptions {
   pdfBytes: Uint8Array;
   pageOrder: number[];
@@ -45,6 +63,7 @@ export interface TransformPdfOptions {
   signatureDataUrl?: string | null;
   stamp?: StampOptions | null;
   digitalSignature?: DigitalSignaturePlaceholder | null;
+  annotations?: PdfAnnotation[] | null;
   metadata?: Partial<PdfMetadata> | null;
   onProgress?: (progress: number) => void;
 }
@@ -74,7 +93,9 @@ export async function inspectPdfMetadata(pdfBytes: Uint8Array): Promise<PdfMetad
     creationDate: doc.getCreationDate() || undefined,
     modificationDate: doc.getModificationDate() || undefined,
     pageCount,
-    dimensions: firstPage ? { width: Math.round(firstPage.getWidth()), height: Math.round(firstPage.getHeight()) } : undefined,
+    dimensions: firstPage
+      ? { width: Math.round(firstPage.getWidth()), height: Math.round(firstPage.getHeight()) }
+      : undefined,
   };
 }
 
@@ -84,10 +105,11 @@ const colorMap = {
   blue: rgb(0.15, 0.4, 0.85),
   slate: rgb(0.3, 0.35, 0.4),
   amber: rgb(0.85, 0.55, 0.1),
+  black: rgb(0.1, 0.1, 0.1),
 };
 
 /**
- * Asynchronously process, reorder, rotate, stamp, sign, and build optimized PDF
+ * Asynchronously process, reorder, rotate, stamp, annotate, sign, and build optimized PDF
  */
 export async function processPdfAsync(options: TransformPdfOptions): Promise<Uint8Array> {
   const {
@@ -97,6 +119,7 @@ export async function processPdfAsync(options: TransformPdfOptions): Promise<Uin
     signatureDataUrl,
     stamp,
     digitalSignature,
+    annotations,
     metadata,
     onProgress,
   } = options;
@@ -130,7 +153,7 @@ export async function processPdfAsync(options: TransformPdfOptions): Promise<Uin
     }
 
     const currentPercent = 10 + Math.round(((i + chunkSize) / effectiveOrder.length) * 50);
-    onProgress?.(Math.min(currentPercent, 65));
+    onProgress?.(Math.min(currentPercent, 60));
     await yieldToMainThread();
   }
 
@@ -156,11 +179,8 @@ export async function processPdfAsync(options: TransformPdfOptions): Promise<Uin
       const textWidth = helveticaBold.widthOfTextAtSize(stampText, fontSize);
       const textHeight = helveticaBold.heightAtSize(fontSize);
 
-      // Centered stamp
       const cx = width / 2;
       const cy = height / 2;
-
-      // Draw bounding box for stamp
       const padX = 24;
       const padY = 12;
 
@@ -209,7 +229,110 @@ export async function processPdfAsync(options: TransformPdfOptions): Promise<Uin
     }
   }
 
-  // 2. Apply Cryptographic Signature Placeholder
+  // 2. Apply Interactive Annotations (Shapes, Checkmarks, Freehand, Signatures)
+  if (annotations && annotations.length > 0) {
+    for (const annot of annotations) {
+      if (annot.pageIndex >= pages.length) continue;
+      const page = pages[Math.max(0, annot.pageIndex)];
+      const { width: pWidth, height: pHeight } = page.getSize();
+
+      const annotColor = colorMap[annot.color || "blue"] || colorMap.blue;
+      const opacity = annot.opacity ?? 0.9;
+      const strokeWidth = annot.strokeWidth || 2;
+
+      const posX = (annot.xPercent / 100) * pWidth;
+      const posY = (annot.yPercent / 100) * pHeight;
+      const width = (annot.widthPercent / 100) * pWidth;
+      const height = (annot.heightPercent / 100) * pHeight;
+
+      if (annot.type === "rectangle") {
+        page.drawRectangle({
+          x: posX,
+          y: posY,
+          width,
+          height,
+          borderColor: annotColor,
+          borderWidth: strokeWidth,
+          opacity,
+          color: rgb(annotColor.red, annotColor.green, annotColor.blue),
+        });
+      } else if (annot.type === "circle") {
+        page.drawEllipse({
+          x: posX + width / 2,
+          y: posY + height / 2,
+          xScale: width / 2,
+          yScale: height / 2,
+          borderColor: annotColor,
+          borderWidth: strokeWidth,
+          opacity,
+        });
+      } else if (annot.type === "checkmark") {
+        // High visibility approval badge
+        const badgeRadius = Math.max(12, Math.min(width, height) / 2);
+        const cx = posX + width / 2;
+        const cy = posY + height / 2;
+
+        page.drawCircle({
+          x: cx,
+          y: cy,
+          size: badgeRadius,
+          color: colorMap.green,
+          opacity,
+        });
+
+        // White checkmark lines
+        page.drawLine({
+          start: { x: cx - badgeRadius * 0.45, y: cy },
+          end: { x: cx - badgeRadius * 0.1, y: cy - badgeRadius * 0.35 },
+          thickness: 2.5,
+          color: rgb(1, 1, 1),
+        });
+        page.drawLine({
+          start: { x: cx - badgeRadius * 0.1, y: cy - badgeRadius * 0.35 },
+          end: { x: cx + badgeRadius * 0.5, y: cy + badgeRadius * 0.35 },
+          thickness: 2.5,
+          color: rgb(1, 1, 1),
+        });
+      } else if (annot.type === "text" && annot.text) {
+        page.drawText(annot.text, {
+          x: posX,
+          y: posY,
+          size: Math.max(9, height * 0.7),
+          font: helveticaBold,
+          color: annotColor,
+          opacity,
+        });
+      } else if (annot.type === "freehand" && annot.points && annot.points.length > 1) {
+        for (let k = 0; k < annot.points.length - 1; k++) {
+          const p1 = annot.points[k];
+          const p2 = annot.points[k + 1];
+          page.drawLine({
+            start: { x: (p1.xPercent / 100) * pWidth, y: (p1.yPercent / 100) * pHeight },
+            end: { x: (p2.xPercent / 100) * pWidth, y: (p2.yPercent / 100) * pHeight },
+            thickness: strokeWidth,
+            color: annotColor,
+            opacity,
+          });
+        }
+      } else if (annot.type === "signature" && annot.signatureDataUrl) {
+        try {
+          const sigBytes = await (await fetch(annot.signatureDataUrl)).arrayBuffer();
+          const sigImage = await destDoc.embedPng(sigBytes);
+          page.drawImage(sigImage, {
+            x: posX,
+            y: posY,
+            width,
+            height,
+            opacity,
+          });
+        } catch (err) {
+          console.warn("Failed embedding annotation signature", err);
+        }
+      }
+    }
+  }
+
+  // 3. Apply Cryptographic Signature Placeholder
   if (digitalSignature?.enabled && pages.length > 0) {
     const targetIdx = Math.min(digitalSignature.pageIndex, pages.length - 1);
     const p = pages[Math.max(0, targetIdx)];
@@ -221,7 +344,6 @@ export async function processPdfAsync(options: TransformPdfOptions): Promise<Uin
     const posX = (digitalSignature.xPercent / 100) * (pWidth - boxWidth);
     const posY = (digitalSignature.yPercent / 100) * (pHeight - boxHeight);
 
-    // Box background and security border
     p.drawRectangle({
       x: posX,
       y: posY,
@@ -232,7 +354,6 @@ export async function processPdfAsync(options: TransformPdfOptions): Promise<Uin
       borderWidth: 1.5,
     });
 
-    // Left security ribbon accent
     p.drawRectangle({
       x: posX,
       y: posY,
@@ -289,7 +410,7 @@ export async function processPdfAsync(options: TransformPdfOptions): Promise<Uin
     });
   }
 
-  // 3. Apply Hand-drawn Signature if present
+  // 4. Apply Primary Hand-drawn Signature if present
   if (signatureDataUrl && pages.length > 0) {
     try {
       const sigBytes = await (await fetch(signatureDataUrl)).arrayBuffer();
@@ -306,7 +427,7 @@ export async function processPdfAsync(options: TransformPdfOptions): Promise<Uin
     }
   }
 
-  // 4. Embed Updated Metadata
+  // 5. Embed Updated Metadata
   if (metadata) {
     if (metadata.title) destDoc.setTitle(metadata.title);
     if (metadata.author) destDoc.setAuthor(metadata.author);

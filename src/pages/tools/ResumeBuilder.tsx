@@ -29,6 +29,7 @@ import {
 } from "@/lib/documentStore";
 import { useDocumentHistory } from "@/hooks/useDocumentHistory";
 import { SnapshotTimeline } from "@/components/SnapshotTimeline";
+import { exportResumeToDocx } from "@/lib/docxExport";
 import { toast } from "sonner";
 
 export type Experience = {
@@ -52,7 +53,9 @@ export type Project = {
   details: string;
 };
 
-export type ResumeTheme = "modern" | "classic" | "professionalBlue";
+export type ResumeTheme = "modern" | "classic" | "professionalBlue" | "minimalMonochrome" | "emerald";
+export type ResumeTypography = "sans" | "serif" | "mono";
+export type ResumeLayout = "standard" | "compact" | "modernSplit";
 
 export type ResumePayload = {
   fullName: string;
@@ -62,6 +65,8 @@ export type ResumePayload = {
   summary: string;
   skills: string;
   theme: ResumeTheme;
+  typography?: ResumeTypography;
+  layout?: ResumeLayout;
   experience: Experience[];
   education: Education[];
   projects: Project[];
@@ -77,15 +82,25 @@ const emptyResume = (): ResumePayload => ({
   summary: "",
   skills: "",
   theme: "modern",
+  typography: "sans",
+  layout: "standard",
   experience: [{ id: makeId(), role: "", company: "", duration: "", highlights: "" }],
   education: [{ id: makeId(), school: "", degree: "", graduation: "" }],
   projects: [{ id: makeId(), name: "", details: "" }],
 });
 
-const themeStyles: Record<ResumeTheme, { title: string; accent: string; section: string }> = {
-  modern: { title: "text-slate-900 dark:text-slate-100", accent: "text-sky-700 dark:text-sky-400", section: "border-sky-500" },
-  classic: { title: "text-neutral-900 dark:text-neutral-100", accent: "text-neutral-700 dark:text-neutral-300", section: "border-neutral-500" },
-  professionalBlue: { title: "text-blue-950 dark:text-blue-100", accent: "text-blue-700 dark:text-blue-400", section: "border-blue-700" },
+const themeStyles: Record<ResumeTheme, { title: string; accent: string; section: string; hex: string; label: string }> = {
+  modern: { title: "text-slate-900 dark:text-slate-100", accent: "text-sky-700 dark:text-sky-400", section: "border-sky-500", hex: "#0284c7", label: "Modern Sky" },
+  classic: { title: "text-neutral-900 dark:text-neutral-100", accent: "text-neutral-700 dark:text-neutral-300", section: "border-neutral-500", hex: "#475569", label: "Classic Slate" },
+  professionalBlue: { title: "text-blue-950 dark:text-blue-100", accent: "text-blue-700 dark:text-blue-400", section: "border-blue-700", hex: "#1d4ed8", label: "Executive Blue" },
+  minimalMonochrome: { title: "text-zinc-950 dark:text-zinc-100", accent: "text-zinc-800 dark:text-zinc-300", section: "border-zinc-800 dark:border-zinc-300", hex: "#18181b", label: "Minimalist Mono" },
+  emerald: { title: "text-emerald-950 dark:text-emerald-100", accent: "text-emerald-700 dark:text-emerald-400", section: "border-emerald-600", hex: "#059669", label: "Forest Emerald" },
+};
+
+const typographyStyles: Record<ResumeTypography, { class: string; label: string; pdfFont: string }> = {
+  sans: { class: "font-sans", label: "Modern Sans", pdfFont: "helvetica" },
+  serif: { class: "font-serif", label: "Executive Serif", pdfFont: "times" },
+  mono: { class: "font-mono", label: "Technical Mono", pdfFont: "courier" },
 };
 
 const ResumeBuilder = () => {
@@ -192,104 +207,123 @@ const ResumeBuilder = () => {
     resetState(emptyResume());
   };
 
+  const handleExportDocx = async () => {
+    try {
+      await exportResumeToDocx(resumeData, title);
+      toast.success("Resume exported to Word (.docx)");
+    } catch (err) {
+      toast.error("Failed to export DOCX: " + (err as Error).message);
+    }
+  };
+
   const exportPdf = () => {
     const doc = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+    const selectedTypo = typographyStyles[resumeData.typography || "sans"];
+    const pdfFont = selectedTypo.pdfFont;
+    const isCompact = resumeData.layout === "compact";
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    doc.text(resumeData.fullName || "Your Name", 15, 20);
+    // Set accent stroke color
+    const hex = theme.hex.replace("#", "");
+    const r = parseInt(hex.substring(0, 2), 16) || 15;
+    const g = parseInt(hex.substring(2, 4), 16) || 23;
+    const b = parseInt(hex.substring(4, 6), 16) || 42;
+    doc.setDrawColor(r, g, b);
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9.5);
+    doc.setFont(pdfFont, "bold");
+    doc.setFontSize(isCompact ? 20 : 22);
+    doc.text(resumeData.fullName || "Your Name", 15, isCompact ? 18 : 20);
+
+    doc.setFont(pdfFont, "normal");
+    doc.setFontSize(isCompact ? 9 : 9.5);
     const contact = [resumeData.email, resumeData.phone, resumeData.location].filter(Boolean).join("  •  ");
-    doc.text(contact || "Contact Details", 15, 27);
+    doc.text(contact || "Contact Details", 15, isCompact ? 24 : 27);
 
-    let y = 36;
+    let y = isCompact ? 32 : 36;
 
     if (resumeData.summary) {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
+      doc.setFont(pdfFont, "bold");
+      doc.setFontSize(isCompact ? 10 : 11);
       doc.text("Professional Summary", 15, y);
       doc.line(15, y + 1.5, 195, y + 1.5);
-      y += 6;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
+      y += isCompact ? 5 : 6;
+      doc.setFont(pdfFont, "normal");
+      doc.setFontSize(isCompact ? 8.5 : 9);
       const summaryLines = doc.splitTextToSize(resumeData.summary, 180);
       doc.text(summaryLines, 15, y);
-      y += summaryLines.length * 4.5 + 4;
+      y += summaryLines.length * (isCompact ? 4 : 4.5) + (isCompact ? 3 : 4);
     }
 
     if (resumeData.experience.length > 0) {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
+      doc.setFont(pdfFont, "bold");
+      doc.setFontSize(isCompact ? 10 : 11);
       doc.text("Experience", 15, y);
       doc.line(15, y + 1.5, 195, y + 1.5);
-      y += 6;
+      y += isCompact ? 5 : 6;
 
       resumeData.experience.forEach((exp) => {
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(9.5);
+        doc.setFont(pdfFont, "bold");
+        doc.setFontSize(isCompact ? 9 : 9.5);
         doc.text(exp.role || "Role", 15, y);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(8.5);
+        doc.setFont(pdfFont, "normal");
+        doc.setFontSize(isCompact ? 8 : 8.5);
         const meta = [exp.company, exp.duration].filter(Boolean).join("  •  ");
-        if (meta) doc.text(meta, 15, y + 4.5);
+        if (meta) doc.text(meta, 15, y + (isCompact ? 4 : 4.5));
 
         const lines = doc.splitTextToSize(exp.highlights || "-", 180);
-        doc.text(lines, 15, y + 9.5);
-        y += 11 + lines.length * 4;
+        doc.text(lines, 15, y + (isCompact ? 8.5 : 9.5));
+        y += (isCompact ? 9 : 11) + lines.length * (isCompact ? 3.5 : 4);
       });
       y += 2;
     }
 
     if (resumeData.education.length > 0) {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
+      doc.setFont(pdfFont, "bold");
+      doc.setFontSize(isCompact ? 10 : 11);
       doc.text("Education", 15, y);
       doc.line(15, y + 1.5, 195, y + 1.5);
-      y += 6;
+      y += isCompact ? 5 : 6;
 
       resumeData.education.forEach((ed) => {
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(9.5);
+        doc.setFont(pdfFont, "bold");
+        doc.setFontSize(isCompact ? 9 : 9.5);
         doc.text(ed.degree || "Degree", 15, y);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(8.5);
+        doc.setFont(pdfFont, "normal");
+        doc.setFontSize(isCompact ? 8 : 8.5);
         const meta = [ed.school, ed.graduation].filter(Boolean).join("  •  ");
-        if (meta) doc.text(meta, 15, y + 4.5);
-        y += 9.5;
+        if (meta) doc.text(meta, 15, y + (isCompact ? 4 : 4.5));
+        y += isCompact ? 8.5 : 9.5;
       });
       y += 2;
     }
 
     if (resumeData.projects.length > 0) {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
+      doc.setFont(pdfFont, "bold");
+      doc.setFontSize(isCompact ? 10 : 11);
       doc.text("Key Projects", 15, y);
       doc.line(15, y + 1.5, 195, y + 1.5);
-      y += 6;
+      y += isCompact ? 5 : 6;
 
       resumeData.projects.forEach((proj) => {
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(9.5);
+        doc.setFont(pdfFont, "bold");
+        doc.setFontSize(isCompact ? 9 : 9.5);
         doc.text(proj.name || "Project", 15, y);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(8.5);
+        doc.setFont(pdfFont, "normal");
+        doc.setFontSize(isCompact ? 8 : 8.5);
         const lines = doc.splitTextToSize(proj.details || "-", 180);
-        doc.text(lines, 15, y + 4.5);
-        y += 6 + lines.length * 4;
+        doc.text(lines, 15, y + (isCompact ? 4 : 4.5));
+        y += (isCompact ? 5 : 6) + lines.length * (isCompact ? 3.5 : 4);
       });
       y += 2;
     }
 
     if (resumeData.skills) {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
+      doc.setFont(pdfFont, "bold");
+      doc.setFontSize(isCompact ? 10 : 11);
       doc.text("Skills & Technologies", 15, y);
       doc.line(15, y + 1.5, 195, y + 1.5);
-      y += 6;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
+      y += isCompact ? 5 : 6;
+      doc.setFont(pdfFont, "normal");
+      doc.setFontSize(isCompact ? 8.5 : 9);
       doc.text(doc.splitTextToSize(resumeData.skills, 180), 15, y);
     }
 
@@ -297,7 +331,7 @@ const ResumeBuilder = () => {
     toast.success("Resume PDF downloaded");
   };
 
-  const theme = themeStyles[resumeData.theme];
+  const theme = themeStyles[resumeData.theme] || themeStyles.modern;
 
   return (
     <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6">
@@ -353,6 +387,11 @@ const ResumeBuilder = () => {
           <Button size="sm" onClick={handleSave} className="gap-1.5 h-8 text-xs font-semibold">
             <Save className="w-3.5 h-3.5" />
             Save Resume
+          </Button>
+
+          <Button size="sm" variant="outline" onClick={handleExportDocx} className="gap-1.5 h-8 text-xs font-semibold">
+            <FileText className="w-3.5 h-3.5 text-blue-500" />
+            Export DOCX
           </Button>
 
           <Button size="sm" variant="outline" onClick={exportPdf} className="gap-1.5 h-8 text-xs font-semibold">
@@ -502,22 +541,77 @@ const ResumeBuilder = () => {
               </div>
             </div>
 
-            {/* Theme Selector */}
-            <div>
-              <label className="text-xs font-medium mb-1.5 block">Visual Styling Theme</label>
-              <div className="grid grid-cols-3 gap-2">
-                {(["modern", "classic", "professionalBlue"] as const).map((t) => (
-                  <Button
-                    key={t}
-                    type="button"
-                    size="sm"
-                    variant={resumeData.theme === t ? "default" : "outline"}
-                    className="text-xs h-7 capitalize"
-                    onClick={() => setResumeData((p) => ({ ...p, theme: t }))}
-                  >
-                    {t === "professionalBlue" ? "Executive Blue" : t}
-                  </Button>
-                ))}
+            {/* Template & Typography Customization Engine */}
+            <div className="p-3.5 border rounded-lg bg-card/40 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold flex items-center gap-1.5 text-foreground">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                  Template & Typography Engine
+                </span>
+                <span className="text-[10px] text-muted-foreground uppercase font-mono">
+                  {typographyStyles[resumeData.typography || "sans"].label}
+                </span>
+              </div>
+
+              {/* Theme Palette */}
+              <div>
+                <label className="text-[11px] font-medium text-muted-foreground mb-1.5 block">Visual Theme & Accent</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                  {(["modern", "classic", "professionalBlue", "minimalMonochrome", "emerald"] as const).map((t) => {
+                    const st = themeStyles[t];
+                    return (
+                      <Button
+                        key={t}
+                        type="button"
+                        size="sm"
+                        variant={resumeData.theme === t ? "default" : "outline"}
+                        className="text-[11px] h-7 px-2 justify-start gap-1.5"
+                        onClick={() => setResumeData((p) => ({ ...p, theme: t }))}
+                      >
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: st.hex }} />
+                        <span className="truncate">{st.label}</span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Typography */}
+              <div>
+                <label className="text-[11px] font-medium text-muted-foreground mb-1.5 block">Font Family Hierarchy</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(["sans", "serif", "mono"] as const).map((typo) => (
+                    <Button
+                      key={typo}
+                      type="button"
+                      size="sm"
+                      variant={(resumeData.typography || "sans") === typo ? "default" : "outline"}
+                      className={`text-[11px] h-7 px-2 ${typographyStyles[typo].class}`}
+                      onClick={() => setResumeData((p) => ({ ...p, typography: typo }))}
+                    >
+                      {typographyStyles[typo].label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Layout Spacing Mode */}
+              <div>
+                <label className="text-[11px] font-medium text-muted-foreground mb-1.5 block">Layout Structure</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(["standard", "compact", "modernSplit"] as const).map((lay) => (
+                    <Button
+                      key={lay}
+                      type="button"
+                      size="sm"
+                      variant={(resumeData.layout || "standard") === lay ? "default" : "outline"}
+                      className="text-[11px] h-7 px-2 capitalize"
+                      onClick={() => setResumeData((p) => ({ ...p, layout: lay }))}
+                    >
+                      {lay === "modernSplit" ? "Split Header" : lay}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -739,10 +833,29 @@ const ResumeBuilder = () => {
           </section>
 
           {/* Live Rendered Resume Sheet */}
-          <section className="border rounded-xl p-8 bg-card/90 shadow-sm max-h-[750px] overflow-y-auto">
-            <h2 className={`text-2xl font-black tracking-tight ${theme.title}`}>{resumeData.fullName || "Your Full Name"}</h2>
-            <div className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-2">
-              {[resumeData.email, resumeData.phone, resumeData.location].filter(Boolean).join("  •  ") || "Contact information"}
+          <section className={`border rounded-xl shadow-sm max-h-[750px] overflow-y-auto bg-card/95 transition-all ${
+            typographyStyles[resumeData.typography || "sans"].class
+          } ${
+            resumeData.layout === "compact" ? "p-5" : "p-8"
+          }`}>
+            <div className={`border-b pb-4 ${
+              resumeData.layout === "modernSplit"
+                ? "flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2"
+                : ""
+            }`}>
+              <div>
+                <h2 className={`text-2xl font-black tracking-tight ${theme.title}`}>
+                  {resumeData.fullName || "Your Full Name"}
+                </h2>
+                <div className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-2">
+                  {[resumeData.email, resumeData.phone, resumeData.location].filter(Boolean).join("  •  ") || "Contact information"}
+                </div>
+              </div>
+              {resumeData.layout === "modernSplit" && (
+                <div className="text-[10px] uppercase font-mono tracking-wider font-semibold text-muted-foreground bg-muted/40 px-2 py-0.5 rounded border">
+                  Curriculum Vitae
+                </div>
+              )}
             </div>
 
             {resumeData.summary && (

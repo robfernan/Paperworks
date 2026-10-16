@@ -1,0 +1,77 @@
+name: Paperworks Commercial CI/CD
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  web-and-suite:
+    name: Web Build, Typecheck & Vitest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: TypeScript Typecheck
+        run: npm run typecheck
+
+      - name: Run Unit & Integration Test Suites
+        run: npm run test
+
+      - name: Vite Production Build
+        run: npm run build
+
+  go-wails-backend:
+    name: Wails Go Backend Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+
+      - name: Verify Go Module & Vet
+        run: |
+          go mod tidy
+          go vet ./...
+
+      - name: Compile Backend Binaries
+        run: go build -v ./...
+
+  capacitor-mobile-sync:
+    name: Capacitor Android Bridge Sync
+    runs-on: ubuntu-latest
+    needs: [web-and-suite]
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Web Dist
+        run: npm run build
+
+      - name: Verify Capacitor Android Sync
+        run: npx cap sync android

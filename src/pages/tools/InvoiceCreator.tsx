@@ -11,10 +11,11 @@ import {
   Undo2,
   Redo2,
   Building2,
-  User,
   Calculator,
   Image as ImageIcon,
-  CheckCircle2,
+  FileDown,
+  DollarSign,
+  Wallet,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -30,10 +31,13 @@ import {
 } from "@/lib/documentStore";
 import { useDocumentHistory } from "@/hooks/useDocumentHistory";
 import { SnapshotTimeline } from "@/components/SnapshotTimeline";
+import { CatalogDialog } from "@/components/invoice/CatalogDialog";
+import { exportInvoiceToDocx } from "@/lib/docxExport";
 import { toast } from "sonner";
 
 export type InvoiceItem = {
   id: string;
+  sku?: string;
   desc: string;
   qty: number;
   price: number;
@@ -43,18 +47,33 @@ export type InvoicePayload = {
   companyName: string;
   companyPhone: string;
   invoiceDate: string;
+  dueDate?: string;
+  invoiceNumber?: string;
   clientName: string;
   clientAddress: string;
+  currency: string;
   paymentTerms: string;
   notes: string;
   taxRate: number;
   discount: number;
+  depositPaid: number;
   logo: string | null;
   items: InvoiceItem[];
 };
 
+const CURRENCIES = [
+  { code: "USD", symbol: "$", label: "USD ($)" },
+  { code: "EUR", symbol: "€", label: "EUR (€)" },
+  { code: "GBP", symbol: "£", label: "GBP (£)" },
+  { code: "CAD", symbol: "CA$", label: "CAD (CA$)" },
+  { code: "AUD", symbol: "A$", label: "AUD (A$)" },
+  { code: "JPY", symbol: "¥", label: "JPY (¥)" },
+  { code: "CHF", symbol: "CHF", label: "CHF (CHF)" },
+];
+
 const createItem = (): InvoiceItem => ({
   id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  sku: "",
   desc: "",
   qty: 1,
   price: 0,
@@ -64,12 +83,16 @@ const emptyInvoice = (): InvoicePayload => ({
   companyName: "",
   companyPhone: "",
   invoiceDate: new Date().toISOString().slice(0, 10),
+  dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+  invoiceNumber: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
   clientName: "",
   clientAddress: "",
-  paymentTerms: "Deposit: 50% upfront. Balance due Net 30 upon delivery.",
+  currency: "$",
+  paymentTerms: "Deposit: 50% upfront. Balance due Net 30 upon completion.",
   notes: "Thank you for your business. Please remit payments directly.",
   taxRate: 0,
   discount: 0,
+  depositPaid: 0,
   logo: null,
   items: [createItem()],
 });
@@ -119,12 +142,22 @@ const InvoiceCreator = () => {
       if (selected) {
         setSelectedId(selected.id);
         setTitle(selected.title);
-        resetState(selected.payload);
+        resetState({
+          ...emptyInvoice(),
+          ...selected.payload,
+          currency: selected.payload.currency || "$",
+          depositPaid: selected.payload.depositPaid || 0,
+        });
       }
     } else if (docs.length > 0 && !selectedId) {
       setSelectedId(docs[0].id);
       setTitle(docs[0].title);
-      resetState(docs[0].payload);
+      resetState({
+        ...emptyInvoice(),
+        ...docs[0].payload,
+        currency: docs[0].payload.currency || "$",
+        depositPaid: docs[0].payload.depositPaid || 0,
+      });
     }
     setIsLoading(false);
   }, [searchParams, selectedId, resetState]);
@@ -133,9 +166,12 @@ const InvoiceCreator = () => {
     void loadDocuments();
   }, [loadDocuments]);
 
+  const currencySymbol = invoiceData.currency || "$";
   const subtotal = invoiceData.items.reduce((sum, item) => sum + item.qty * item.price, 0);
   const tax = subtotal * (invoiceData.taxRate / 100);
   const total = subtotal + tax - invoiceData.discount;
+  const depositPaid = invoiceData.depositPaid || 0;
+  const balanceDue = Math.max(0, total - depositPaid);
 
   const updateItem = (itemId: string, key: keyof InvoiceItem, value: string | number) => {
     setInvoiceData((prev) => ({
@@ -146,6 +182,22 @@ const InvoiceCreator = () => {
 
   const addItem = () => {
     setInvoiceData((prev) => ({ ...prev, items: [...prev.items, createItem()] }));
+  };
+
+  const handleInsertCatalogItem = (preset: { desc: string; qty: number; price: number; sku?: string }) => {
+    setInvoiceData((prev) => ({
+      ...prev,
+      items: [
+        ...prev.items,
+        {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          sku: preset.sku || "",
+          desc: preset.desc,
+          qty: preset.qty,
+          price: preset.price,
+        },
+      ],
+    }));
   };
 
   const removeItem = (itemId: string) => {
@@ -193,6 +245,16 @@ const InvoiceCreator = () => {
     reader.readAsDataURL(file);
   };
 
+  const handleExportDocx = async () => {
+    try {
+      await exportInvoiceToDocx(invoiceData, title);
+      toast.success("Exported Word .docx invoice");
+    } catch (err) {
+      toast.error("Failed to export Word document");
+      console.error(err);
+    }
+  };
+
   const onExportPdf = async () => {
     const doc = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
 
@@ -215,12 +277,16 @@ const InvoiceCreator = () => {
     doc.text(`Company: ${invoiceData.companyName || "-"}`, 15, 32);
     doc.text(`Phone: ${invoiceData.companyPhone || "-"}`, 15, 38);
     doc.text(`Invoice Date: ${invoiceData.invoiceDate || "-"}`, 15, 44);
+    if (invoiceData.dueDate) {
+      doc.text(`Due Date: ${invoiceData.dueDate}`, 15, 50);
+    }
 
-    doc.text(`Client: ${invoiceData.clientName || "-"}`, 15, 54);
+    const clientY = invoiceData.dueDate ? 60 : 54;
+    doc.text(`Client: ${invoiceData.clientName || "-"}`, 15, clientY);
     const addressLines = doc.splitTextToSize(invoiceData.clientAddress || "-", 180);
-    doc.text(addressLines, 15, 60);
+    doc.text(addressLines, 15, clientY + 6);
 
-    const tableY = 72 + addressLines.length * 4;
+    const tableY = clientY + 18 + addressLines.length * 4;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.text("Description", 15, tableY);
@@ -234,26 +300,43 @@ const InvoiceCreator = () => {
     let y = tableY + 8;
     doc.setFont("helvetica", "normal");
     invoiceData.items.forEach((item) => {
-      doc.text(item.desc || "Item", 15, y);
+      const descText = item.sku ? `[${item.sku}] ${item.desc || "Item"}` : item.desc || "Item";
+      doc.text(descText, 15, y);
       doc.text(String(item.qty), 120, y);
-      doc.text(`$${item.price.toFixed(2)}`, 145, y);
-      doc.text(`$${(item.qty * item.price).toFixed(2)}`, 175, y);
+      doc.text(`${currencySymbol}${item.price.toFixed(2)}`, 145, y);
+      doc.text(`${currencySymbol}${(item.qty * item.price).toFixed(2)}`, 175, y);
       y += 6.5;
     });
 
     y += 4;
     doc.line(120, y, 195, y);
     y += 6;
-    doc.text(`Subtotal: $${subtotal.toFixed(2)}`, 140, y);
+    doc.text(`Subtotal: ${currencySymbol}${subtotal.toFixed(2)}`, 140, y);
     y += 5.5;
-    doc.text(`Tax (${invoiceData.taxRate}%): $${tax.toFixed(2)}`, 140, y);
-    y += 5.5;
-    doc.text(`Discount: -$${invoiceData.discount.toFixed(2)}`, 140, y);
+    doc.text(`Tax (${invoiceData.taxRate}%): ${currencySymbol}${tax.toFixed(2)}`, 140, y);
+    if (invoiceData.discount > 0) {
+      y += 5.5;
+      doc.text(`Discount: -${currencySymbol}${invoiceData.discount.toFixed(2)}`, 140, y);
+    }
     y += 6;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    doc.text(`Total: $${total.toFixed(2)}`, 140, y);
+    doc.text(`Total: ${currencySymbol}${total.toFixed(2)}`, 140, y);
 
+    if (depositPaid > 0) {
+      y += 6;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(22, 163, 74);
+      doc.text(`Deposit / Paid: -${currencySymbol}${depositPaid.toFixed(2)}`, 140, y);
+      y += 6;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11.5);
+      doc.setTextColor(37, 99, 235);
+      doc.text(`Balance Due: ${currencySymbol}${balanceDue.toFixed(2)}`, 140, y);
+    }
+
+    doc.setTextColor(30, 41, 59);
     y += 14;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
@@ -277,13 +360,13 @@ const InvoiceCreator = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-border/60">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">Invoice Studio</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Invoice & Proposal Studio</h1>
             <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 font-semibold">
-              Commercial
+              Commercial Pro
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Offline billing system with automatic calculations, itemization, brand logos, and instant PDF generation.
+            Offline billing with service catalog presets, multi-currency support, partial deposit tracking, and PDF + DOCX export.
           </p>
         </div>
 
@@ -313,6 +396,12 @@ const InvoiceCreator = () => {
             </Button>
           </div>
 
+          {/* Catalog Dialog */}
+          <CatalogDialog
+            onSelectItem={handleInsertCatalogItem}
+            currencySymbol={currencySymbol}
+          />
+
           {/* Timeline Snapshot Dialog */}
           <SnapshotTimeline
             documentId={selectedId}
@@ -328,7 +417,12 @@ const InvoiceCreator = () => {
             Save Invoice
           </Button>
 
-          <Button size="sm" variant="outline" onClick={onExportPdf} className="gap-1.5 h-8 text-xs font-semibold">
+          <Button size="sm" variant="outline" onClick={handleExportDocx} className="gap-1.5 h-8 text-xs font-semibold">
+            <FileDown className="w-3.5 h-3.5 text-blue-600" />
+            Export Word (.docx)
+          </Button>
+
+          <Button size="sm" variant="default" onClick={onExportPdf} className="gap-1.5 h-8 text-xs font-semibold">
             <Download className="w-3.5 h-3.5" />
             Export PDF
           </Button>
@@ -375,7 +469,12 @@ const InvoiceCreator = () => {
                   onClick={() => {
                     setSelectedId(doc.id);
                     setTitle(doc.title);
-                    resetState(doc.payload);
+                    resetState({
+                      ...emptyInvoice(),
+                      ...doc.payload,
+                      currency: doc.payload.currency || "$",
+                      depositPaid: doc.payload.depositPaid || 0,
+                    });
                     setSearchParams({ doc: doc.id }, { replace: true });
                   }}
                   className={`p-2.5 rounded-lg border text-left cursor-pointer transition-all ${
@@ -430,10 +529,28 @@ const InvoiceCreator = () => {
         {/* Workspace: Editor + Live Preview */}
         <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_1fr] gap-6">
           {/* Form Editor */}
-          <section className="border rounded-xl p-5 bg-card/60 space-y-4">
-            <div className="flex items-center gap-1.5 font-semibold text-xs text-muted-foreground uppercase tracking-wider">
-              <Building2 className="w-3.5 h-3.5" />
-              Company & Client Information
+          <section className="border rounded-xl p-5 bg-card/60 space-y-4 max-h-[750px] overflow-y-auto pr-2">
+            <div className="flex items-center justify-between pb-1 border-b border-border/50">
+              <div className="flex items-center gap-1.5 font-semibold text-xs text-muted-foreground uppercase tracking-wider">
+                <Building2 className="w-3.5 h-3.5" />
+                Company & Client Information
+              </div>
+
+              {/* Currency Picker */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-medium text-muted-foreground">Currency:</span>
+                <select
+                  value={invoiceData.currency}
+                  onChange={(e) => setInvoiceData((prev) => ({ ...prev, currency: e.target.value }))}
+                  className="text-xs h-7 border rounded bg-background px-2 font-medium"
+                >
+                  {CURRENCIES.map((c) => (
+                    <option key={c.code} value={c.symbol}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -457,9 +574,9 @@ const InvoiceCreator = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="text-xs font-medium mb-1 block">Client / Customer Name</label>
+                <label className="text-xs font-medium mb-1 block">Client Name</label>
                 <Input
                   value={invoiceData.clientName}
                   onChange={(e) => setInvoiceData((prev) => ({ ...prev, clientName: e.target.value }))}
@@ -468,11 +585,20 @@ const InvoiceCreator = () => {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium mb-1 block">Invoice Issue Date</label>
+                <label className="text-xs font-medium mb-1 block">Invoice Date</label>
                 <Input
                   type="date"
                   value={invoiceData.invoiceDate}
                   onChange={(e) => setInvoiceData((prev) => ({ ...prev, invoiceDate: e.target.value }))}
+                  className="text-xs h-8"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block">Payment Due Date</label>
+                <Input
+                  type="date"
+                  value={invoiceData.dueDate || ""}
+                  onChange={(e) => setInvoiceData((prev) => ({ ...prev, dueDate: e.target.value }))}
                   className="text-xs h-8"
                 />
               </div>
@@ -484,31 +610,43 @@ const InvoiceCreator = () => {
                 value={invoiceData.clientAddress}
                 onChange={(e) => setInvoiceData((prev) => ({ ...prev, clientAddress: e.target.value }))}
                 placeholder="100 Enterprise Way, Suite 200, Austin, TX"
-                className="w-full text-xs rounded-md border px-3 py-2 bg-background min-h-[64px]"
+                className="w-full text-xs rounded-md border px-3 py-2 bg-background min-h-[50px]"
                 rows={2}
               />
             </div>
 
-            {/* Line items */}
+            {/* Line items with SKU */}
             <div className="pt-2 border-t">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold flex items-center gap-1.5">
                   <Calculator className="w-3.5 h-3.5 text-primary" />
                   Billable Line Items
                 </span>
-                <Button size="sm" variant="outline" onClick={addItem} className="h-6 text-[11px] gap-1 px-2">
-                  <Plus className="w-3 h-3" />
-                  Add Line
-                </Button>
+                <div className="flex items-center gap-1.5">
+                  <CatalogDialog
+                    onSelectItem={handleInsertCatalogItem}
+                    currencySymbol={currencySymbol}
+                  />
+                  <Button size="sm" variant="outline" onClick={addItem} className="h-7 text-[11px] gap-1 px-2">
+                    <Plus className="w-3 h-3" />
+                    Add Custom Line
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-2">
                 {invoiceData.items.map((item) => (
-                  <div key={item.id} className="grid grid-cols-1 sm:grid-cols-[1fr_75px_95px_auto] gap-2 items-center">
+                  <div key={item.id} className="grid grid-cols-1 sm:grid-cols-[70px_1fr_65px_85px_auto] gap-2 items-center">
+                    <Input
+                      value={item.sku || ""}
+                      onChange={(e) => updateItem(item.id, "sku", e.target.value)}
+                      placeholder="SKU"
+                      className="text-xs h-8 font-mono text-[11px]"
+                    />
                     <Input
                       value={item.desc}
                       onChange={(e) => updateItem(item.id, "desc", e.target.value)}
-                      placeholder="Item description / service"
+                      placeholder="Description"
                       className="text-xs h-8"
                     />
                     <Input
@@ -542,8 +680,8 @@ const InvoiceCreator = () => {
               </div>
             </div>
 
-            {/* Tax & Discount */}
-            <div className="grid grid-cols-2 gap-3 pt-2">
+            {/* Financial Adjustments: Tax, Discount, Deposit */}
+            <div className="grid grid-cols-3 gap-3 pt-2">
               <div>
                 <label className="text-xs font-medium mb-1 block">Sales Tax Rate (%)</label>
                 <Input
@@ -556,7 +694,7 @@ const InvoiceCreator = () => {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium mb-1 block">Fixed Discount ($)</label>
+                <label className="text-xs font-medium mb-1 block">Fixed Discount ({currencySymbol})</label>
                 <Input
                   type="number"
                   min={0}
@@ -564,6 +702,19 @@ const InvoiceCreator = () => {
                   value={invoiceData.discount}
                   onChange={(e) => setInvoiceData((prev) => ({ ...prev, discount: Number(e.target.value) }))}
                   className="text-xs h-8"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block text-emerald-600 dark:text-emerald-400">
+                  Deposit / Paid ({currencySymbol})
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={10}
+                  value={invoiceData.depositPaid || 0}
+                  onChange={(e) => setInvoiceData((prev) => ({ ...prev, depositPaid: Number(e.target.value) }))}
+                  className="text-xs h-8 border-emerald-500/30 focus-visible:ring-emerald-500"
                 />
               </div>
             </div>
@@ -589,7 +740,7 @@ const InvoiceCreator = () => {
                 <textarea
                   value={invoiceData.paymentTerms}
                   onChange={(e) => setInvoiceData((prev) => ({ ...prev, paymentTerms: e.target.value }))}
-                  className="w-full text-xs rounded-md border px-3 py-2 bg-background min-h-[50px]"
+                  className="w-full text-xs rounded-md border px-3 py-2 bg-background min-h-[48px]"
                   rows={2}
                 />
               </div>
@@ -598,7 +749,7 @@ const InvoiceCreator = () => {
                 <textarea
                   value={invoiceData.notes}
                   onChange={(e) => setInvoiceData((prev) => ({ ...prev, notes: e.target.value }))}
-                  className="w-full text-xs rounded-md border px-3 py-2 bg-background min-h-[50px]"
+                  className="w-full text-xs rounded-md border px-3 py-2 bg-background min-h-[48px]"
                   rows={2}
                 />
               </div>
@@ -611,7 +762,10 @@ const InvoiceCreator = () => {
               <div className="flex items-start justify-between pb-4 border-b">
                 <div>
                   <h3 className="text-2xl font-black tracking-tight text-foreground">INVOICE</h3>
-                  <div className="text-xs text-muted-foreground mt-0.5">{invoiceData.invoiceDate}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Date: {invoiceData.invoiceDate}
+                    {invoiceData.dueDate && ` • Due: ${invoiceData.dueDate}`}
+                  </div>
                 </div>
                 {invoiceData.logo && (
                   <img src={invoiceData.logo} alt="Logo" className="max-h-12 max-w-[140px] object-contain rounded" />
@@ -633,44 +787,87 @@ const InvoiceCreator = () => {
 
               {/* Items Table */}
               <div className="border rounded-lg overflow-hidden text-xs my-4">
-                <div className="grid grid-cols-[1fr_50px_70px_80px] bg-muted/60 font-semibold p-2 border-b">
+                <div className="grid grid-cols-[1fr_45px_70px_80px] bg-muted/60 font-semibold p-2 border-b">
                   <span>Description</span>
                   <span className="text-right">Qty</span>
                   <span className="text-right">Price</span>
                   <span className="text-right">Total</span>
                 </div>
                 {invoiceData.items.map((item) => (
-                  <div key={item.id} className="grid grid-cols-[1fr_50px_70px_80px] p-2 border-b last:border-b-0">
-                    <span className="truncate pr-1">{item.desc || "Item"}</span>
+                  <div key={item.id} className="grid grid-cols-[1fr_45px_70px_80px] p-2 border-b last:border-b-0 items-center">
+                    <div className="truncate pr-1">
+                      {item.sku && (
+                        <span className="text-[10px] font-mono mr-1.5 px-1 py-0.5 rounded bg-muted">
+                          {item.sku}
+                        </span>
+                      )}
+                      <span>{item.desc || "Item"}</span>
+                    </div>
                     <span className="text-right">{item.qty}</span>
-                    <span className="text-right">${item.price.toFixed(2)}</span>
-                    <span className="text-right font-medium">${(item.qty * item.price).toFixed(2)}</span>
+                    <span className="text-right">
+                      {currencySymbol}
+                      {item.price.toFixed(2)}
+                    </span>
+                    <span className="text-right font-medium">
+                      {currencySymbol}
+                      {(item.qty * item.price).toFixed(2)}
+                    </span>
                   </div>
                 ))}
               </div>
 
               {/* Calculations Summary */}
-              <div className="space-y-1.5 text-xs w-48 ml-auto my-4">
+              <div className="space-y-1.5 text-xs w-56 ml-auto my-4">
                 <div className="flex justify-between text-muted-foreground">
                   <span>Subtotal</span>
-                  <span>${subtotal.toFixed(2)}</span>
+                  <span>
+                    {currencySymbol}
+                    {subtotal.toFixed(2)}
+                  </span>
                 </div>
                 {invoiceData.taxRate > 0 && (
                   <div className="flex justify-between text-muted-foreground">
                     <span>Tax ({invoiceData.taxRate}%)</span>
-                    <span>${tax.toFixed(2)}</span>
+                    <span>
+                      {currencySymbol}
+                      {tax.toFixed(2)}
+                    </span>
                   </div>
                 )}
                 {invoiceData.discount > 0 && (
                   <div className="flex justify-between text-muted-foreground">
                     <span>Discount</span>
-                    <span>-${invoiceData.discount.toFixed(2)}</span>
+                    <span>
+                      -{currencySymbol}
+                      {invoiceData.discount.toFixed(2)}
+                    </span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-sm text-foreground pt-1.5 border-t">
-                  <span>Total Due</span>
-                  <span className="text-primary font-mono">${total.toFixed(2)}</span>
+                  <span>Invoice Total</span>
+                  <span className="font-mono">
+                    {currencySymbol}
+                    {total.toFixed(2)}
+                  </span>
                 </div>
+                {depositPaid > 0 && (
+                  <>
+                    <div className="flex justify-between text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                      <span>Deposit Paid</span>
+                      <span>
+                        -{currencySymbol}
+                        {depositPaid.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between font-bold text-sm text-blue-600 dark:text-blue-400 pt-1 border-t border-dashed">
+                      <span>Balance Due</span>
+                      <span className="font-mono">
+                        {currencySymbol}
+                        {balanceDue.toFixed(2)}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 

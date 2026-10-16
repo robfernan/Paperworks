@@ -40,12 +40,15 @@ import { useDocumentHistory } from "@/hooks/useDocumentHistory";
 import { SnapshotTimeline } from "@/components/SnapshotTimeline";
 import { PdfPageGrid } from "@/components/pdf/PdfPageGrid";
 import { PdfToolsDialog } from "@/components/pdf/PdfToolsDialog";
+import { PdfAnnotationToolbar } from "@/components/pdf/PdfAnnotationToolbar";
 import {
   processPdfAsync,
   inspectPdfMetadata,
   type StampOptions,
   type DigitalSignaturePlaceholder,
   type PdfMetadata,
+  type PdfAnnotation,
+  type AnnotationType,
 } from "@/lib/pdfEngine";
 import { toast } from "sonner";
 
@@ -58,6 +61,7 @@ export interface PdfProjectPayload {
   signatureDataUrl: string | null;
   stamp?: StampOptions | null;
   digitalSignature?: DigitalSignaturePlaceholder | null;
+  annotations?: PdfAnnotation[];
   metadata?: Partial<PdfMetadata> | null;
 }
 
@@ -68,6 +72,7 @@ const emptyProjectPayload: PdfProjectPayload = {
   signatureDataUrl: null,
   stamp: null,
   digitalSignature: null,
+  annotations: [],
   metadata: null,
 };
 
@@ -87,6 +92,10 @@ const PdfPro = () => {
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [processProgress, setProcessProgress] = React.useState(0);
   const [selectedPageIndex, setSelectedPageIndex] = React.useState<number | null>(0);
+
+  // Active annotation tool
+  const [activeTool, setActiveTool] = React.useState<AnnotationType | "select">("select");
+  const [currentColor, setCurrentColor] = React.useState<NonNullable<PdfAnnotation["color"]>>("blue");
 
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
@@ -127,7 +136,11 @@ const PdfPro = () => {
       if (target) {
         setSelectedId(target.id);
         setProjectTitle(target.title);
-        resetState(target.payload);
+        resetState({
+          ...emptyProjectPayload,
+          ...target.payload,
+          annotations: target.payload.annotations || [],
+        });
 
         // Hydrate PDF bytes from native storage engine or legacy base64
         let bytes: Uint8Array | null = null;
@@ -171,6 +184,7 @@ const PdfPro = () => {
         signatureDataUrl: null,
         stamp: null,
         digitalSignature: null,
+        annotations: [],
         metadata: {
           title: metadata.title || file.name.replace(/\.pdf$/i, ""),
           author: metadata.author,
@@ -183,6 +197,7 @@ const PdfPro = () => {
       if (!selectedId) {
         setProjectTitle(file.name.replace(/\.pdf$/i, "") || "Untitled PDF Project");
       }
+      setSelectedPageIndex(0);
       toast.success(`Loaded "${file.name}" with ${pagesCount} pages`);
     } catch (err) {
       toast.error("Failed to parse PDF document");
@@ -217,6 +232,7 @@ const PdfPro = () => {
           signatureDataUrl: projectState.signatureDataUrl,
           stamp: projectState.stamp,
           digitalSignature: projectState.digitalSignature,
+          annotations: projectState.annotations,
           metadata: projectState.metadata,
           onProgress: (p) => {
             if (!cancelled) setProcessProgress(p);
@@ -257,6 +273,7 @@ const PdfPro = () => {
     projectState.signatureDataUrl,
     projectState.stamp,
     projectState.digitalSignature,
+    projectState.annotations,
     projectState.metadata,
   ]);
 
@@ -299,7 +316,84 @@ const PdfPro = () => {
     toast.success(`Duplicated page ${pageIndex + 1}`);
   };
 
-  // Signature canvas handlers
+  // Add Annotation to active page
+  const handleAddAnnotation = (annot: Omit<PdfAnnotation, "id">) => {
+    const newAnnot: PdfAnnotation = {
+      ...annot,
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    };
+
+    setProjectState((prev) => ({
+      ...prev,
+      annotations: [...(prev.annotations || []), newAnnot],
+    }));
+  };
+
+  const handleRemoveAnnotation = (id: string) => {
+    setProjectState((prev) => ({
+      ...prev,
+      annotations: (prev.annotations || []).filter((a) => a.id !== id),
+    }));
+    toast.info("Annotation removed");
+  };
+
+  // Handle click on canvas or quick tool action
+  const handleCanvasToolClick = (tool: AnnotationType) => {
+    const targetPage = selectedPageIndex ?? 0;
+    if (tool === "checkmark") {
+      handleAddAnnotation({
+        type: "checkmark",
+        pageIndex: targetPage,
+        xPercent: 82,
+        yPercent: 88,
+        widthPercent: 8,
+        heightPercent: 6,
+        color: "green",
+      });
+      toast.success(`Checkmark placed on Page ${targetPage + 1}`);
+    } else if (tool === "rectangle") {
+      handleAddAnnotation({
+        type: "rectangle",
+        pageIndex: targetPage,
+        xPercent: 15,
+        yPercent: 65,
+        widthPercent: 70,
+        heightPercent: 12,
+        color: currentColor,
+        strokeWidth: 2,
+      });
+      toast.success(`Rectangle placed on Page ${targetPage + 1}`);
+    } else if (tool === "circle") {
+      handleAddAnnotation({
+        type: "circle",
+        pageIndex: targetPage,
+        xPercent: 35,
+        yPercent: 55,
+        widthPercent: 30,
+        heightPercent: 18,
+        color: currentColor,
+        strokeWidth: 2,
+      });
+      toast.success(`Circle placed on Page ${targetPage + 1}`);
+    } else if (tool === "text") {
+      const text = window.prompt("Enter text note annotation:", "REVIEWED & VERIFIED");
+      if (text) {
+        handleAddAnnotation({
+          type: "text",
+          pageIndex: targetPage,
+          xPercent: 20,
+          yPercent: 75,
+          widthPercent: 40,
+          heightPercent: 5,
+          text,
+          color: currentColor,
+        });
+        toast.success(`Text note added to Page ${targetPage + 1}`);
+      }
+    }
+  };
+
+  // Hand-drawn Signature canvas handlers
   React.useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -364,7 +458,6 @@ const PdfPro = () => {
     const payload: PdfProjectPayload = {
       ...state,
       storageRef: blobRef,
-      // Clear heavy base64 string to keep JSON database ultra-lean
       pdfBase64: undefined,
     };
 
@@ -400,6 +493,7 @@ const PdfPro = () => {
         signatureDataUrl: projectState.signatureDataUrl,
         stamp: projectState.stamp,
         digitalSignature: projectState.digitalSignature,
+        annotations: projectState.annotations,
         metadata: projectState.metadata,
         onProgress: setProcessProgress,
       });
@@ -436,7 +530,11 @@ const PdfPro = () => {
     setSelectedId(doc.id);
     setSearchParams({ doc: doc.id }, { replace: true });
     setProjectTitle(doc.title);
-    resetState(doc.payload);
+    resetState({
+      ...emptyProjectPayload,
+      ...doc.payload,
+      annotations: doc.payload.annotations || [],
+    });
 
     let bytes: Uint8Array | null = null;
     if (doc.payload.storageRef) {
@@ -448,6 +546,7 @@ const PdfPro = () => {
     if (bytes) {
       setPdfBytes(bytes);
     }
+    setSelectedPageIndex(0);
     toast.info(`Opened "${doc.title}"`);
   };
 
@@ -459,11 +558,11 @@ const PdfPro = () => {
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold tracking-tight">PDF Pro Studio</h1>
             <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 font-semibold">
-              v2.0 Commercial
+              v2.0 Commercial Suite
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Offline-first PDF assembly, reordering, rotation, cryptographic stamp overlay, and native binary engine.
+            Offline-first PDF assembly, interactive annotations (checkmarks, shapes, notes), multi-signature stamps, and native binary engine.
           </p>
         </div>
 
@@ -555,7 +654,7 @@ const PdfPro = () => {
       {/* Main Workspace Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
         {/* Left Sidebar: Projects Library */}
-        <aside className="border rounded-xl p-4 bg-card/60 backdrop-blur-sm flex flex-col h-[750px]">
+        <aside className="border rounded-xl p-4 bg-card/60 backdrop-blur-sm flex flex-col h-[780px]">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-1.5 font-semibold text-xs">
               <Layers className="w-4 h-4 text-primary" />
@@ -646,7 +745,7 @@ const PdfPro = () => {
         </aside>
 
         {/* Right Editor Pane */}
-        <div className="space-y-6">
+        <div className="space-y-5">
           <input
             ref={fileInputRef}
             type="file"
@@ -671,17 +770,17 @@ const PdfPro = () => {
                   const p1 = doc.addPage([595, 842]);
                   p1.drawText("PAPERWORKS COMMERCIAL ENGINE - PAGE 1", { x: 50, y: 780, size: 14 });
                   p1.drawText("Offline-first multi-page PDF processing with native binary storage.", { x: 50, y: 750, size: 10 });
-                  
+
                   const p2 = doc.addPage([595, 842]);
                   p2.drawText("TECHNICAL SPECIFICATION - PAGE 2", { x: 50, y: 780, size: 14 });
-                  p2.drawText("Touch-friendly page reordering, rotation, stamps, and digital signing.", { x: 50, y: 750, size: 10 });
+                  p2.drawText("Interactive annotations, shapes, checkmarks, and signature library.", { x: 50, y: 750, size: 10 });
 
                   const p3 = doc.addPage([595, 842]);
                   p3.drawText("TERMS & AUDIT SEAL - PAGE 3", { x: 50, y: 780, size: 14 });
                   p3.drawText("Autosave snapshot timeline and deep-state undo/redo history.", { x: 50, y: 750, size: 10 });
 
                   const bytes = await doc.save();
-                  await handleFile(new File([bytes], "sample-commercial-doc.pdf", { type: "application/pdf" }));
+                  await handleFile(new File([bytes.buffer as ArrayBuffer], "sample-commercial-doc.pdf", { type: "application/pdf" }));
                 }}
               >
                 <Sparkles className="w-3.5 h-3.5 text-primary" />
@@ -700,6 +799,62 @@ const PdfPro = () => {
               </div>
             )}
           </div>
+
+          {/* Interactive Annotation Suite Toolbar */}
+          {projectState.pageOrder.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Interactive Annotations & Shapes (Target: Page {(selectedPageIndex ?? 0) + 1})
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 text-[10px] gap-1"
+                    onClick={() => handleCanvasToolClick("checkmark")}
+                  >
+                    + Checkmark
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 text-[10px] gap-1"
+                    onClick={() => handleCanvasToolClick("rectangle")}
+                  >
+                    + Box
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 text-[10px] gap-1"
+                    onClick={() => handleCanvasToolClick("circle")}
+                  >
+                    + Circle
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 text-[10px] gap-1"
+                    onClick={() => handleCanvasToolClick("text")}
+                  >
+                    + Note
+                  </Button>
+                </div>
+              </div>
+
+              <PdfAnnotationToolbar
+                activeTool={activeTool}
+                onSelectTool={setActiveTool}
+                currentColor={currentColor}
+                onSelectColor={setCurrentColor}
+                activePageIndex={selectedPageIndex ?? 0}
+                annotations={projectState.annotations || []}
+                onAddAnnotation={handleAddAnnotation}
+                onRemoveAnnotation={handleRemoveAnnotation}
+              />
+            </div>
+          )}
 
           {/* Page Reorder & Rotation Grid */}
           {projectState.pageOrder.length > 0 ? (
@@ -736,14 +891,14 @@ const PdfPro = () => {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5 font-medium text-xs">
                 <PenTool className="w-4 h-4 text-primary" />
-                <span>Hand-Drawn Signature Stamp</span>
+                <span>Primary Document Signature Stamp</span>
               </div>
               <Button size="sm" variant="ghost" onClick={clearSignature} className="h-7 text-xs">
                 Clear Signature
               </Button>
             </div>
             <p className="text-[11px] text-muted-foreground mb-3">
-              Draw your signature on the pad below to automatically embed it onto the bottom right of the primary page.
+              Draw on the pad below or use the "Signatures" button above to insert multiple saved signature stamps on any page.
             </p>
             <div className="border rounded-lg bg-background overflow-hidden inline-block shadow-inner">
               <canvas ref={canvasRef} width={640} height={120} className="w-full max-w-[640px] cursor-crosshair touch-none" />
@@ -756,9 +911,9 @@ const PdfPro = () => {
               <div className="flex items-center justify-between mb-3">
                 <span className="font-medium text-xs flex items-center gap-1.5">
                   <FileCheck2 className="w-4 h-4 text-emerald-500" />
-                  Real-time Compiled Preview
+                  Real-time Compiled Preview (Page {(selectedPageIndex ?? 0) + 1} Selected)
                 </span>
-                <span className="text-[10px] text-muted-foreground">Synchronized with applied operations</span>
+                <span className="text-[10px] text-muted-foreground">Synchronized with applied operations & annotations</span>
               </div>
               <div className="border rounded-lg overflow-hidden bg-background shadow-sm">
                 <iframe title="Compiled PDF Preview" src={pdfUrl} className="w-full h-[640px]" />
