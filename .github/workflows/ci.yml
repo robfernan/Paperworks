@@ -42,8 +42,16 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.23"
           cache: true
+
+      - name: Install Linux GUI Dependencies for Wails
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev || sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+
+      - name: Ensure dist directory exists for embed.FS
+        run: mkdir -p dist && touch dist/index.html
 
       - name: Verify Go Module & Vet
         run: |
@@ -61,6 +69,12 @@ jobs:
       - name: Checkout Codebase
         uses: actions/checkout@v4
 
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
@@ -72,6 +86,9 @@ jobs:
 
       - name: Build Web Dist
         run: npm run build
+
+      - name: Ensure gradlew is executable
+        run: chmod +x android/gradlew
 
       - name: Verify Capacitor Android Sync
         run: npx cap sync android
