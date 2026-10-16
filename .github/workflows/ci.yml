@@ -14,10 +14,10 @@ jobs:
       - name: Checkout Codebase
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: "npm"
 
       - name: Install Dependencies
@@ -75,10 +75,10 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: "npm"
 
       - name: Install Dependencies
@@ -87,8 +87,10 @@ jobs:
       - name: Build Web Dist
         run: npm run build
 
-      - name: Ensure gradlew is executable
-        run: chmod +x android/gradlew
+      - name: Ensure gradlew is executable and format line endings
+        run: |
+          sed -i -e 's/\r$//' android/gradlew
+          chmod +x android/gradlew
 
       - name: Verify Capacitor Android Sync
         run: npm run cap:sync
