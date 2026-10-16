@@ -91,4 +91,4 @@ jobs:
         run: chmod +x android/gradlew
 
       - name: Verify Capacitor Android Sync
-        run: npx cap sync android
+        run: npm run cap:sync
