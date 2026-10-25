@@ -55,6 +55,7 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      'pdf-lib': path.resolve(__dirname, './node_modules/pdf-lib/dist/pdf-lib.esm.js'),
     },
   },
   test: {
@@ -62,3 +63,4 @@ export default defineConfig(({ mode }) => ({
     environment: "node",
   },
 }));
+
