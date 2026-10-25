@@ -1,32 +1,85 @@
 # Paperworks 📄💼
-> **Offline-First Cross-Platform Business Automation & Publishing Workstation**  
-> *A free, open-source alternative to Adobe Acrobat Pro, InDesign, and recurring SaaS billing software.*
+> **Offline-First Cross-Platform Business Automation & Document Workstation**  
+> *A free, privacy-preserving, zero-telemetry alternative to Adobe Acrobat Pro, Canva, and recurring SaaS billing software.*
 
-[![CI/CD Pipeline](https://github.com/robfernan/Paperworks/actions/workflows/ci.yml/badge.svg)](https://github.com/robfernan/Paperworks/actions)
-[![TypeScript 5.x](https://img.shields.io/badge/TypeScript-5.x-blue.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![React 18](https://img.shields.io/badge/React-18.x-61dafb.svg?logo=react&logoColor=black)](https://react.dev/)
-[![Vite 8](https://img.shields.io/badge/Vite-8.x-646CFF.svg?logo=vite&logoColor=white)](https://vite.dev/)
-[![Wails v2](https://img.shields.io/badge/Desktop-Wails_v2_Go-00ADD8.svg?logo=go&logoColor=white)](https://wails.io/)
-[![Capacitor Android](https://img.shields.io/badge/Mobile-Capacitor_Android-119EFF.svg?logo=capacitor&logoColor=white)](https://capacitorjs.com/)
-[![Vitest](https://img.shields.io/badge/Tested_with-Vitest-FCC72B.svg?logo=vitest&logoColor=black)](https://vitest.dev/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Live Web App](https://img.shields.io/badge/Live_App-GitHub_Pages-4f46e5?style=for-the-badge&logo=github)](https://robfernan.github.io/Paperworks/)
+[![Built with Bun](https://img.shields.io/badge/Built_with-Bun-fbf0df?style=for-the-badge&logo=bun)](https://bun.sh)
+[![React 18](https://img.shields.io/badge/React-18.x-61dafb.svg?style=for-the-badge&logo=react)](https://react.dev/)
+[![TypeScript 5](https://img.shields.io/badge/TypeScript-5.x-blue.svg?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+[![Desktop](https://img.shields.io/badge/Desktop-Wails_v2_(Go)-00ADD8.svg?style=for-the-badge&logo=go)](https://wails.io/)
+[![Mobile](https://img.shields.io/badge/Mobile-Capacitor_Android-119EFF.svg?style=for-the-badge&logo=capacitor)](https://capacitorjs.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg?style=for-the-badge)](./LICENSE)
 
 ---
 
 ## 🌟 Executive Overview
 
-**Paperworks** is an enterprise-grade document creation and manipulation workstation designed to operate **100% offline with zero cloud dependency and zero telemetry**. It delivers high-fidelity visual layout engines, native Word `.docx` generators, prepress print-ready PDF compilers, and advanced PDF annotation tools across Web, Desktop (Windows, macOS, Linux via Wails v2 + Go), and Mobile (Android via Capacitor).
+**Paperworks** is an enterprise-grade document creation and manipulation workstation designed to operate **100% offline with zero cloud dependency and zero remote telemetry**. It delivers high-fidelity visual layout engines, native Word `.docx` generators, prepress print-ready PDF compilers, and advanced PDF annotation tools across Web (PWA), Desktop (Windows, macOS, Linux via Wails v2 + Go), and Mobile (Android via Capacitor).
 
-<div align="center">
-  <img src="assets/screenshots/wails_desktop.png" alt="Wails Desktop Client" width="48%">
-  <img src="assets/screenshots/wails_responsiveness.png" alt="Invoice Studio Wails" width="48%">
-</div>
+Unlike web utilities (Smallpdf, iLovePDF) that upload sensitive contracts and financial forms to third-party servers, Paperworks compiles all documents directly inside your browser engine via WebAssembly (`pdf-lib` and `jsPDF`).
+
+🔗 **Live Web Application**: [https://robfernan.github.io/Paperworks/](https://robfernan.github.io/Paperworks/)
 
 ---
 
-## 🏗️ Architecture & Storage Engine
+## 🛡️ The 100% Zero-Cloud Privacy Moat
 
-Paperworks utilizes a unified, multi-tiered offline storage engine designed to prevent memory leaks, browser string overhead, and UI thread stutter.
+| Principle | How Paperworks Protects You |
+| :--- | :--- |
+| **0 Remote Network Requests** | All PDF manipulation, text extraction, and invoice calculations execute on your local CPU. |
+| **Encrypted Local Storage** | Invoices, resume drafts, and business cards persist in browser `IndexedDB v3` or desktop `data/blobs`. |
+| **Data Sovereignty** | 1-click JSON backup export/import allows complete vault migration without vendor lock-in. |
+| **Immutable PDF Flattening** | Digitally signed and stamped documents are flattened into permanent vector bytes to prevent tampering. |
+
+---
+
+## 🚀 Professional Feature Suites
+
+### 1. 💼 Invoice & Proposals Studio Pro
+* **Service/Product Catalog:** Save preset goods and services with unique SKUs, descriptions, and default rates for instantaneous 1-click line-item insertion.
+* **Global Multi-Currency:** Seamlessly switch currencies (`$`, `€`, `£`, `¥`, `CHF`, `C$`, `A$`, `₹`).
+* **Deposit & Balance Tracking:** Log partial payments, tax rates, and discounts with live **Balance Due** computation.
+* **Dual Native Export:** Generates print-ready PDFs and editable, professionally formatted Word documents (`.docx`) with embedded financial tables.
+
+### 2. 📑 PDF Pro Advanced Annotation Suite
+* **Client-Side Vector Engine:** Fast asynchronous chunked processing powered by `pdf-lib` and `jsPDF`.
+* **Interactive Markup:** Overlay checkmarks, rectangles, highlight boxes, circles, and sticky notes with opacity controls.
+* **Digital Signature Pad:** Draw or type vector signatures with a local signature vault for instant document placement.
+* **Administrative Stamps:** One-click insertion of official seals (`APPROVED`, `CONFIDENTIAL`, `VOID`, `FINAL DRAFT`).
+* **Prepress Page Manipulator:** Touch-friendly and drag-and-drop page reordering, individual page rotation (90° CW/CCW), and page extraction.
+
+### 3. 📄 Executive Resume Studio
+* **ATS-Friendly Formatting:** Guaranteed single-column vector layouts engineered to pass Applicant Tracking Systems with 100% accuracy.
+* **Typography Engine:** Switch between **Modern Sans** (Inter), **Executive Serif** (Georgia/Times), and **Technical Mono** (Courier).
+* **Curated Themes:** *Modern Sky*, *Classic Slate*, *Executive Blue*, *Minimalist Mono*, and *Forest Emerald*.
+* **Native Word & PDF:** Dual export to `.docx` retaining layout structures alongside print-ready PDFs.
+
+### 4. 📇 Business Card Studio Pro
+* **Prepress 1/8" Print Bleed:** Commercial 3.75" × 2.25" sheets complete with corner crop marks and 0.125" safety margins.
+* **Precision Coordinates:** ±0.05" X/Y coordinate nudge buttons with snap-to-grid alignment.
+* **Curated Finishes:** Simulates physical card stocks: *Studio White*, *Bone Stock Ivory*, *Eggshell Linen*, *Obsidian Luxury*, and *Brushed Platinum*.
+
+### 5. 🗄️ Document Vault & Snapshot History
+* Point-in-time snapshot timeline (`useDocumentHistory`) providing deep undo/redo transaction states.
+* Centralized searchable archive of all created documents with 1-click backup and restore.
+
+---
+
+## 📊 Comparison: Paperworks vs. Legacy Incumbents
+
+| Capability | **Paperworks** | **Canva Pro** | **Adobe Acrobat Pro** | **Smallpdf** |
+| :--- | :--- | :--- | :--- | :--- |
+| **Price** | **Free Forever (MIT)** | \$15 / month | \$19.99–\$29.99 / mo | \$12 / month |
+| **Privacy & Telemetry** | **100% Zero-Cloud** | Cloud Upload | Adobe Cloud Sync | Cloud Upload |
+| **PDF Annotation & Sign** | **Included** | Limited | Yes | Yes (Limited) |
+| **ATS Resume Builder** | **Included (.docx + PDF)** | Design-heavy (Fails ATS)| None | None |
+| **Itemized Invoices** | **Included (.docx + PDF)** | Basic templates | None | None |
+| **Commercial Print Bleed**| **Included (0.125")** | Pro Only | InDesign Only | None |
+| **Command Palette (⌘K)** | **Included** | None | None | None |
+
+---
+
+## 🛠️ Architecture & Tech Stack
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -51,116 +104,26 @@ Paperworks utilizes a unified, multi-tiered offline storage engine designed to p
 └───────────────────────────────┴───────────────────────────────┴─────────────┘
 ```
 
-### Key Architectural Tenets:
-1. **Binary Offloading:** Heavy PDF payloads are decoupled from document metadata. On desktop shells, binaries are written directly to `data/blobs` on the local disk via Go backend routines (`SaveBinaryFile`, `ReadBinaryFile`), avoiding multi-megabyte base64 strings in JSON stores. On web runtimes, binaries are managed in dedicated IndexedDB object stores.
-2. **Snapshot Revision History:** Every editor provides deep-state undo/redo transaction buffers and visual checkpoint timelines (`SnapshotTimeline`), allowing users to inspect and restore past revisions at any point.
-3. **Universal Command Palette:** Pressing `Cmd+K` or `Ctrl+K` brings up global search across all documents, tools, and rapid document creation shortcuts.
-
 ---
 
-## 🚀 Professional Feature Suites
+## ⚡ Quick Start & Development
 
-### 1. 💼 Invoice & Proposals Studio Pro
-- **Reusable Item/Service Catalog:** Save preset goods and services with unique SKUs, descriptions, and default rates for instantaneous 1-click line-item insertion.
-- **Multi-Currency Support:** Seamlessly switch between global currencies (`$`, `€`, `£`, `¥`, `CHF`, `C$`, `A$`, `₹`).
-- **Deposit & Down-Payment Tracking:** Log partial payments and deposits, dynamically calculating the real-time **Balance Due**.
-- **Dual Native Export:** Generates print-ready PDFs and editable, professionally formatted Word documents (`.docx`) with embedded financial tables and company headers.
-
-### 2. 📑 PDF Pro Advanced Annotation Suite
-- **Asynchronous Chunked Processing:** High-performance PDF processing engine with progress bars for large documents.
-- **Interactive Annotation Suite:** Overlay checkmarks, shape rectangles, highlight boxes, circles, and sticky text notes with customizable colors and opacity.
-- **Digital Signature Library:** Integrated HTML5 signature pad with a saved signature vault for inserting reusable digital stamps.
-- **Administrative Stamps & Cryptographic Sealing:** One-click insertion of official seals (`APPROVED`, `CONFIDENTIAL`, `VOID`, `FINAL DRAFT`) and cryptographic signature placeholder metadata.
-- **Prepress Page Manipulator:** Touch-friendly and drag-and-drop page reordering, individual page rotation (90° CW/CCW), and page extraction.
-- **Exact Coordinate Mapping:** All annotations map directly to PDF coordinate space and are permanently compiled into exported PDF bytes via `pdf-lib`.
-
-### 3. 📄 Resume & Executive CV Studio
-- **Template & Typography Engine:** Switch typography hierarchies between **Modern Sans** (Inter), **Executive Serif** (Georgia/Times), and **Technical Mono** (Courier).
-- **Theme Palettes:** Curated color themes including *Modern Sky*, *Classic Slate*, *Executive Blue*, *Minimalist Mono*, and *Forest Emerald*.
-- **Density Controls:** One-click toggle between standard comfortable spacing and **Compact 1-Page Layout**.
-- **Native Word Export:** Instant export to `.docx` retaining typography fonts and accent colors, alongside vector PDF rendering.
-
-### 4. 📇 Business Card Studio Pro (InDesign Grade)
-- **Prepress 1/8" Print Bleed:** Toggleable 0.125" print bleed boundary exporting standard commercial 3.75" × 2.25" sheets complete with **corner crop marks**.
-- **Safe Margin Guides:** Inset 0.125" cyan safety guides ensuring all vital typography avoids print guillotine trimming.
-- **Granular Coordinate Controls:** Precision ±0.05" X/Y coordinate nudge buttons with snap-to-grid alignment.
-- **Multi-Layer Edge Accents:** Customizable edge accent stripes (Left, Top, Bottom) in luxury hues (Amber Gold, Royal Indigo, Emerald Green, Crimson Red, Platinum).
-- **Curated Finishes:** Simulates physical card stocks: *Studio White*, *Bone Stock Ivory*, *Eggshell Linen*, *Obsidian Luxury*, and *Brushed Platinum*.
-
-### 5. 🗄️ Document Vault
-- Centralized repository of all saved invoices, resumes, business cards, and PDF projects.
-- Real-time search, filter by tool type, count statistics, and one-click JSON backup export/import.
-
----
-
-## 🛠️ Getting Started & Local Development
-
-### Prerequisites
-- **Node.js:** v20.x or higher
-- **npm:** v10.x or higher
-- **Go:** v1.22+ (for Wails desktop builds)
-
-### Installation
 ```bash
 # Clone repository
 git clone https://github.com/robfernan/Paperworks.git
 cd Paperworks
 
-# Install dependencies
-npm install
+# Install dependencies with Bun
+bun install
+
+# Start local Vite development server
+bun run dev
+
+# Build production bundle
+bun run build
 ```
-
-### Running the Web App (Vite)
-```bash
-npm run dev
-# App will be accessible at http://localhost:5173
-```
-
-### Running Desktop Shell (Wails + Go)
-```bash
-# Requires Wails CLI installed globally (go install github.com/wailsapp/wails/v2/cmd/wails@latest)
-npm run wails:dev
-```
-
-### Running Mobile Target (Capacitor Android)
-```bash
-# Build production web bundle and sync native Android project
-npm run cap:build
-
-# Open project in Android Studio
-npm run cap:android
-```
-
----
-
-## 🧪 Testing & Verification
-
-The Paperworks test suite is powered by **Vitest**:
-
-```bash
-# Run all unit and integration tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-
-# TypeScript typechecking
-npm run typecheck
-
-# Production bundle compilation
-npm run build
-```
-
----
-
-## 🔒 Privacy, Security & Data Sovereignty
-
-- **Zero Cloud Footprint:** No accounts, no subscriptions, no tracking pixels, and zero outbound network telemetries.
-- **Local Native Disk Storage:** Your financial records, client lists, signatures, and confidential PDF agreements remain on your hardware under your control.
-- **Pre-Press Compliant:** Output PDFs conform to PDF standards compatible with any commercial print shop.
 
 ---
 
 ## 📄 License
-
-Paperworks is licensed under the [MIT License](LICENSE). Built for the community, businesses, and creators everywhere.
+Licensed under the **MIT License**.
