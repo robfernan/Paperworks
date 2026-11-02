@@ -244,204 +244,40 @@ const PdfPro = () => {
   const loadSampleContract = async () => {
     setIsProcessing(true);
     try {
-      const doc = await PDFDocument.create();
-      const helvetica = await doc.embedStandardFont(StandardFonts.Helvetica);
-      const helveticaBold = await doc.embedStandardFont(StandardFonts.HelveticaBold);
+      let bytes: Uint8Array;
+      const res = await fetch("./templates/sample_contract.pdf").catch(() => null);
+      if (res && res.ok) {
+        const buffer = await res.arrayBuffer();
+        bytes = new Uint8Array(buffer);
+      } else {
+        const doc = await PDFDocument.create();
+        const p1 = doc.addPage([612, 792]);
+        const helveticaBold = await doc.embedStandardFont(StandardFonts.HelveticaBold);
+        p1.drawText("RESIDENTIAL LEASE & PURCHASE AGREEMENT", {
+          x: 50,
+          y: 720,
+          size: 14,
+          font: helveticaBold,
+          color: rgb(0.1, 0.15, 0.3),
+        });
+        bytes = await doc.save();
+      }
 
-      // Page 1: Purchase and Sale Agreement Form
-      const page1 = doc.addPage([612, 792]); // Standard US Letter
-      const { height } = page1.getSize();
-
-      page1.drawText("RESIDENTIAL PURCHASE AND SALE AGREEMENT", {
-        x: 95,
-        y: height - 55,
-        size: 16,
-        font: helveticaBold,
-        color: rgb(0.1, 0.15, 0.3),
-      });
-
-      page1.drawText("FORM SIMPLICITY COMPLIANT TRANSACTION DOCUMENT", {
-        x: 155,
-        y: height - 72,
-        size: 9,
-        font: helvetica,
-        color: rgb(0.4, 0.45, 0.5),
-      });
-
-      // Section 1: Parties
-      page1.drawText("1. PARTIES & PROPERTY ADDRESS", {
-        x: 50,
-        y: height - 110,
-        size: 11,
-        font: helveticaBold,
-        color: rgb(0.15, 0.2, 0.35),
-      });
-      page1.drawLine({
-        start: { x: 50, y: height - 115 },
-        end: { x: 562, y: height - 115 },
-        thickness: 0.75,
-        color: rgb(0.7, 0.7, 0.7),
-      });
-
-      page1.drawText("Buyer(s):", { x: 50, y: height - 140, size: 10, font: helveticaBold });
-      page1.drawLine({ start: { x: 105, y: height - 142 }, end: { x: 300, y: height - 142 }, thickness: 0.5 });
-
-      page1.drawText("Seller(s):", { x: 320, y: height - 140, size: 10, font: helveticaBold });
-      page1.drawLine({ start: { x: 375, y: height - 142 }, end: { x: 562, y: height - 142 }, thickness: 0.5 });
-
-      page1.drawText("Property Address:", { x: 50, y: height - 175, size: 10, font: helveticaBold });
-      page1.drawLine({ start: { x: 145, y: height - 177 }, end: { x: 562, y: height - 177 }, thickness: 0.5 });
-
-      // Section 2: Financial Terms
-      page1.drawText("2. FINANCIAL TERMS & PURCHASE PRICE", {
-        x: 50,
-        y: height - 215,
-        size: 11,
-        font: helveticaBold,
-        color: rgb(0.15, 0.2, 0.35),
-      });
-      page1.drawLine({
-        start: { x: 50, y: height - 220 },
-        end: { x: 562, y: height - 220 },
-        thickness: 0.75,
-        color: rgb(0.7, 0.7, 0.7),
-      });
-
-      page1.drawText("Purchase Price ($):", { x: 50, y: height - 245, size: 10, font: helveticaBold });
-      page1.drawLine({ start: { x: 155, y: height - 247 }, end: { x: 300, y: height - 247 }, thickness: 0.5 });
-
-      page1.drawText("Earnest Money ($):", { x: 320, y: height - 245, size: 10, font: helveticaBold });
-      page1.drawLine({ start: { x: 425, y: height - 247 }, end: { x: 562, y: height - 247 }, thickness: 0.5 });
-
-      page1.drawText("Closing / Settlement Date:", { x: 50, y: height - 280, size: 10, font: helveticaBold });
-      page1.drawLine({ start: { x: 190, y: height - 282 }, end: { x: 350, y: height - 282 }, thickness: 0.5 });
-
-      // Section 3: Disclosures & Contingencies
-      page1.drawText("3. CONTINGENCIES & ELECTIONS", {
-        x: 50,
-        y: height - 325,
-        size: 11,
-        font: helveticaBold,
-        color: rgb(0.15, 0.2, 0.35),
-      });
-      page1.drawLine({
-        start: { x: 50, y: height - 330 },
-        end: { x: 562, y: height - 330 },
-        thickness: 0.75,
-        color: rgb(0.7, 0.7, 0.7),
-      });
-
-      page1.drawRectangle({ x: 52, y: height - 355, width: 12, height: 12, borderWidth: 1 });
-      page1.drawText("Financing Contingency (15 Days)", { x: 72, y: height - 353, size: 10, font: helvetica });
-
-      page1.drawRectangle({ x: 280, y: height - 355, width: 12, height: 12, borderWidth: 1 });
-      page1.drawText("Home Inspection Contingency (10 Days)", { x: 300, y: height - 353, size: 10, font: helvetica });
-
-      page1.drawRectangle({ x: 52, y: height - 380, width: 12, height: 12, borderWidth: 1 });
-      page1.drawText("Title Review & Escrow Approval", { x: 72, y: height - 378, size: 10, font: helvetica });
-
-      page1.drawRectangle({ x: 280, y: height - 380, width: 12, height: 12, borderWidth: 1 });
-      page1.drawText("Homeowner Association Disclosures", { x: 300, y: height - 378, size: 10, font: helvetica });
-
-      // Section 4: Signatures & Initials
-      page1.drawText("4. EXECUTION & ACKNOWLEDGEMENT", {
-        x: 50,
-        y: height - 440,
-        size: 11,
-        font: helveticaBold,
-        color: rgb(0.15, 0.2, 0.35),
-      });
-      page1.drawLine({
-        start: { x: 50, y: height - 445 },
-        end: { x: 562, y: height - 445 },
-        thickness: 0.75,
-        color: rgb(0.7, 0.7, 0.7),
-      });
-
-      page1.drawText("Buyer Signature:", { x: 50, y: height - 495, size: 10, font: helveticaBold });
-      page1.drawLine({ start: { x: 140, y: height - 497 }, end: { x: 330, y: height - 497 }, thickness: 0.5 });
-      page1.drawText("Date:", { x: 360, y: height - 495, size: 10, font: helveticaBold });
-      page1.drawLine({ start: { x: 395, y: height - 497 }, end: { x: 520, y: height - 497 }, thickness: 0.5 });
-
-      page1.drawText("Seller Signature:", { x: 50, y: height - 555, size: 10, font: helveticaBold });
-      page1.drawLine({ start: { x: 140, y: height - 557 }, end: { x: 330, y: height - 557 }, thickness: 0.5 });
-      page1.drawText("Date:", { x: 360, y: height - 555, size: 10, font: helveticaBold });
-      page1.drawLine({ start: { x: 395, y: height - 557 }, end: { x: 520, y: height - 557 }, thickness: 0.5 });
-
-      page1.drawText("Buyer Initials: [        ]    Seller Initials: [        ]", {
-        x: 340,
-        y: 40,
-        size: 9,
-        font: helvetica,
-        color: rgb(0.4, 0.4, 0.4),
-      });
-
-      const bytes = await doc.save();
       setPdfBytes(bytes);
-      setFileName("Sample_Real_Estate_Contract.pdf");
-      setProjectTitle("Sample Real Estate Agreement");
-      setPageCount(1);
-      setCurrentPage(1);
+      setFileName("Residential_Lease_Purchase_Agreement.pdf");
+      setProjectTitle("Residential Lease & Purchase Agreement");
 
-      // Pre-populate Form Simplicity sample annotations
-      setAnnotations([
-        {
-          id: "ann-sample-buyer",
-          page: 1,
-          type: "text",
-          x: 18,
-          y: 18,
-          value: parties.buyer1Name,
-          fontSize: 12,
-          autoShrink: true,
-          alignBaseline: true,
-        },
-        {
-          id: "ann-sample-seller",
-          page: 1,
-          type: "text",
-          x: 63,
-          y: 18,
-          value: parties.seller1Name,
-          fontSize: 12,
-          autoShrink: true,
-          alignBaseline: true,
-        },
-        {
-          id: "ann-sample-address",
-          page: 1,
-          type: "text",
-          x: 25,
-          y: 22.5,
-          value: `${parties.propertyAddress}, ${parties.propertyCity}, ${parties.propertyState} ${parties.propertyZip}`,
-          fontSize: 12,
-          autoShrink: true,
-          alignBaseline: true,
-        },
-        {
-          id: "ann-sample-check1",
-          page: 1,
-          type: "checkmark",
-          x: 9,
-          y: 45.2,
-          value: "✓",
-        },
-        {
-          id: "ann-sample-check2",
-          page: 1,
-          type: "checkmark",
-          x: 46.5,
-          y: 45.2,
-          value: "✓",
-        },
-      ]);
+      const loadedDoc = await PDFDocument.load(bytes);
+      setPageCount(loadedDoc.getPageCount());
+      setCurrentPage(1);
+      setAnnotations([]);
 
       toast({
-        title: "Sample Loaded",
-        description: "Form Simplicity contract sample created with baseline-aligned fields.",
+        title: "Template Loaded",
+        description: "2-Page Real Estate Contract ready to type, checkmark, and sign.",
       });
     } catch (err) {
-      console.error("Error creating sample:", err);
+      console.error("Error loading template:", err);
     } finally {
       setIsProcessing(false);
     }
@@ -692,7 +528,7 @@ const PdfPro = () => {
 
           <Button size="sm" variant="secondary" onClick={() => void loadSampleContract()} className="gap-1.5 text-xs">
             <Sparkles className="w-3.5 h-3.5 text-primary" />
-            Load Sample Contract
+            Load Contract Form Template
           </Button>
 
           <Button
@@ -874,7 +710,7 @@ const PdfPro = () => {
                 </Button>
                 <Button size="sm" variant="secondary" onClick={() => void loadSampleContract()} className="gap-1.5">
                   <Sparkles className="w-4 h-4 text-primary" />
-                  Try Sample Contract
+                  Try Contract Form Template
                 </Button>
               </div>
             </div>

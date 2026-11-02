@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Paperworks</title>
+    <script type="text/javascript">
+      // Single Page Apps for GitHub Pages
+      // Redirects 404s to index.html with the route in the hash
+      var pathSegmentsToKeep = 1;
+      var l = window.location;
+      var repoPath = l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/');
+      var subPath = l.pathname.slice(repoPath.length);
+      var query = l.search ? l.search : '';
+      var hash = l.hash ? l.hash : '';
+      
+      var targetUrl = l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+        repoPath + '/#' + subPath + query + hash;
+      
+      window.location.replace(targetUrl);
+    </script>
+  </head>
+  <body>
+  </body>
+</html>
