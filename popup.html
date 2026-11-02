@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Paperworks</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --accent: #38bdf8;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      width: 320px;
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 16px;
+      user-select: none;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-badge {
+      width: 24px;
+      height: 24px;
+      background: var(--primary);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 13px;
+      color: #fff;
+    }
+    .title {
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .tag {
+      font-size: 10px;
+      padding: 2px 6px;
+      background: rgba(37, 99, 235, 0.2);
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      color: var(--accent);
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 20px 14px;
+      text-align: center;
+      background: rgba(30, 41, 59, 0.5);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-bottom: 12px;
+    }
+    .dropzone.dragover {
+      border-color: var(--accent);
+      background: rgba(56, 189, 248, 0.1);
+    }
+    .dropzone-icon {
+      font-size: 26px;
+      margin-bottom: 6px;
+    }
+    .dropzone-title {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .dropzone-sub {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .btn {
+      width: 100%;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 9px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.15s ease;
+      margin-bottom: 8px;
+    }
+    .btn:hover {
+      background: var(--primary-hover);
+    }
+    .btn-secondary {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-secondary:hover {
+      background: #273549;
+    }
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      background: var(--card-bg);
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .footer-links {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--muted);
+      padding-top: 4px;
+    }
+    .footer-links a {
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .footer-links a:hover {
+      text-decoration: underline;
+    }
+    input[type="file"] {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">
+      <div class="logo-badge">P</div>
+      <div class="title">Paperworks</div>
+    </div>
+    <span class="tag">Form Simplicity</span>
+  </div>
+
+  <div class="dropzone" id="dropzone">
+    <div class="dropzone-icon">📄</div>
+    <div class="dropzone-title">Drop PDF to Fill & Sign</div>
+    <div class="dropzone-sub">or click to choose file from computer</div>
+    <input type="file" id="file-input" accept="application/pdf" />
+  </div>
+
+  <button class="btn" id="open-editor-btn">
+    Launch Form Editor
+  </button>
+  <button class="btn btn-secondary" id="open-vault-btn">
+    Document Vault
+  </button>
+
+  <div class="toggle-group">
+    <span>Auto-intercept PDF links</span>
+    <input type="checkbox" id="intercept-toggle" checked />
+  </div>
+
+  <div class="footer-links">
+    <span id="version-tag">Paperworks v1.0</span>
+    <a id="shortcuts-link">Alt + P to intercept</a>
+  </div>
+
+  <script type="module" src="/src/extension/popup.ts"></script>
+</body>
+</html>

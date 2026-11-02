@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HashRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useSearchParams } from "react-router-dom";
 import Layout from "@/components/Layout";
 
 const Index = React.lazy(() => import("./pages/Index"));
@@ -16,18 +16,41 @@ const InvoiceCreator = React.lazy(() => import("./pages/tools/InvoiceCreator"));
 
 const queryClient = new QueryClient();
 
-const RouteFallback = () => <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 text-sm text-muted-foreground">Loading...</div>;
+const RouteFallback = () => (
+  <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 text-sm text-muted-foreground">
+    Loading...
+  </div>
+);
+
+// Smart router for Web & Chrome Extension root entry points
+const IndexOrPdfRouter = () => {
+  const [params] = useSearchParams();
+  const isPdfTool =
+    params.has("file") ||
+    params.has("openPending") ||
+    params.get("tool") === "pdf";
+  const isVault = params.get("route") === "vault";
+
+  if (isPdfTool) {
+    return <PdfPro />;
+  }
+  if (isVault) {
+    return <DocumentVault />;
+  }
+  return <Index />;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <HashRouter>
+      <BrowserRouter>
         <React.Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/" element={<Layout />}>
-              <Route index element={<Index />} />
+              <Route index element={<IndexOrPdfRouter />} />
+              <Route path="index.html" element={<IndexOrPdfRouter />} />
               <Route path="vault" element={<DocumentVault />} />
               <Route path="tools/pdf-pro" element={<PdfPro />} />
               <Route path="tools/business-cards" element={<BusinessCards />} />
@@ -37,10 +60,9 @@ const App = () => (
             </Route>
           </Routes>
         </React.Suspense>
-      </HashRouter>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );
 
 export default App;
-

@@ -240,7 +240,7 @@ export const PdfToolsDialog: React.FC<PdfToolsDialogProps> = ({
                     <Label className="text-xs">Target Page</Label>
                     <select
                       value={pageTarget}
-                      onChange={(e) => setPageTarget(e.target.value as any)}
+                      onChange={(e) => setPageTarget(e.target.value as "first" | "all" | "last")}
                       className="w-full text-xs h-8 border rounded-md px-2 bg-background mt-1.5"
                     >
                       <option value="first">First Page Only</option>

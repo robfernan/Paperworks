@@ -200,7 +200,7 @@ const DocumentVault = () => {
 
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
+            onChange={(e) => setSortBy(e.target.value as "updated-desc" | "updated-asc" | "title-asc")}
             className="text-xs h-8 rounded-md border bg-background px-2 text-foreground"
           >
             <option value="updated-desc">Latest First</option>
