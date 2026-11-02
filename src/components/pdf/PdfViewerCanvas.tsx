@@ -1,21 +1,12 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import * as pdfjsLib from "pdfjs-dist";
-import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import * as pdfjsWorker from "pdfjs-dist/build/pdf.worker.mjs";
 import { Annotation, ToolMode } from "./types";
 import { X, Move, ZoomIn, ZoomOut } from "lucide-react";
 
-// Configure worker path with Vite-resolved URL
+// Configure in-memory worker handler directly so PDF.js never requests an external file
 if (typeof window !== "undefined") {
-  const isExtension = Boolean(window.chrome?.runtime?.id);
-  if (isExtension) {
-    try {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = window.chrome.runtime.getURL("pdf.worker.min.mjs");
-    } catch {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
-    }
-  } else {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
-  }
+  (window as any).pdfjsWorker = pdfjsWorker;
 }
 
 interface PdfViewerCanvasProps {
