@@ -11,12 +11,12 @@ import {
   Calendar,
   Baseline,
   Minimize2,
-  Users,
   Download,
   Printer,
   Plus,
   X,
   FileCheck,
+  Edit3,
 } from "lucide-react";
 
 interface PdfToolbarProps {
@@ -30,10 +30,10 @@ interface PdfToolbarProps {
   onSelectColor: (color: string) => void;
   activeFontSize: number;
   onSelectFontSize: (size: number) => void;
-  onOpenPartiesDrawer: () => void;
   onOpenSignatureModal: (type: "signature" | "initial") => void;
   onFlattenAndDownload: () => void;
   onPrint: () => void;
+  hasSignature: boolean;
   isProcessing: boolean;
   hasDocument: boolean;
 }
@@ -49,10 +49,10 @@ export const PdfToolbar: React.FC<PdfToolbarProps> = ({
   onSelectColor,
   activeFontSize,
   onSelectFontSize,
-  onOpenPartiesDrawer,
   onOpenSignatureModal,
   onFlattenAndDownload,
   onPrint,
+  hasSignature,
   isProcessing,
   hasDocument,
 }) => {
@@ -62,7 +62,7 @@ export const PdfToolbar: React.FC<PdfToolbarProps> = ({
     <>
       {/* Desktop Top Toolbar */}
       <div className="hidden md:flex items-center justify-between gap-2 p-2.5 bg-card/90 backdrop-blur-md border rounded-xl shadow-sm mb-4 flex-wrap">
-        {/* Tool selector buttons */}
+        {/* Core Tools */}
         <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-lg border">
           <Button
             type="button"
@@ -70,7 +70,7 @@ export const PdfToolbar: React.FC<PdfToolbarProps> = ({
             size="sm"
             onClick={() => onSelectTool("select")}
             className="h-8 px-2.5 gap-1.5 text-xs"
-            title="Pan & Select"
+            title="Pan & Select (V)"
           >
             <MousePointer className="w-3.5 h-3.5" />
             Select
@@ -81,11 +81,11 @@ export const PdfToolbar: React.FC<PdfToolbarProps> = ({
             variant={activeTool === "text" ? "default" : "ghost"}
             size="sm"
             onClick={() => onSelectTool("text")}
-            className="h-8 px-2.5 gap-1.5 text-xs"
-            title="Add Text Field"
+            className="h-8 px-2.5 gap-1.5 text-xs font-medium"
+            title="Type anywhere on form (T)"
           >
-            <Type className="w-3.5 h-3.5" />
-            Text
+            <Type className="w-3.5 h-3.5 text-primary" />
+            Type Text
           </Button>
 
           <Button
@@ -93,11 +93,11 @@ export const PdfToolbar: React.FC<PdfToolbarProps> = ({
             variant={activeTool === "checkmark" ? "default" : "ghost"}
             size="sm"
             onClick={() => onSelectTool("checkmark")}
-            className="h-8 px-2 text-xs"
-            title="Add Checkmark (✓)"
+            className="h-8 px-2.5 gap-1 text-xs font-medium"
+            title="Put a checkmark in box (C)"
           >
             <CheckSquare className="w-3.5 h-3.5 text-emerald-600" />
-            Check
+            Check ✓
           </Button>
 
           <Button
@@ -105,27 +105,39 @@ export const PdfToolbar: React.FC<PdfToolbarProps> = ({
             variant={activeTool === "crossmark" ? "default" : "ghost"}
             size="sm"
             onClick={() => onSelectTool("crossmark")}
-            className="h-8 px-2 text-xs"
-            title="Add Crossmark (✕)"
+            className="h-8 px-2.5 gap-1 text-xs font-medium"
+            title="Put an X in box (X)"
           >
             <XSquare className="w-3.5 h-3.5 text-rose-600" />
-            Cross
+            Put X ✕
           </Button>
 
-          <Button
-            type="button"
-            variant={activeTool === "signature" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => {
-              onSelectTool("signature");
-              onOpenSignatureModal("signature");
-            }}
-            className="h-8 px-2.5 gap-1.5 text-xs"
-            title="Signature Stamp"
-          >
-            <PenTool className="w-3.5 h-3.5 text-primary" />
-            Sign
-          </Button>
+          <div className="flex items-center">
+            <Button
+              type="button"
+              variant={activeTool === "signature" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => {
+                onSelectTool("signature");
+                if (!hasSignature) onOpenSignatureModal("signature");
+              }}
+              className="h-8 px-2.5 gap-1.5 text-xs font-medium"
+              title="Sign Stamp (S)"
+            >
+              <PenTool className="w-3.5 h-3.5 text-primary" />
+              Sign
+            </Button>
+            {hasSignature && (
+              <button
+                type="button"
+                onClick={() => onOpenSignatureModal("signature")}
+                className="p-1 hover:bg-muted text-muted-foreground hover:text-foreground rounded"
+                title="Redraw signature"
+              >
+                <Edit3 className="w-3 h-3" />
+              </button>
+            )}
+          </div>
 
           <Button
             type="button"
@@ -136,7 +148,7 @@ export const PdfToolbar: React.FC<PdfToolbarProps> = ({
               onOpenSignatureModal("initial");
             }}
             className="h-8 px-2.5 gap-1.5 text-xs"
-            title="Initials Stamp"
+            title="Initials Stamp (I)"
           >
             <Bookmark className="w-3.5 h-3.5" />
             Initial
@@ -148,14 +160,14 @@ export const PdfToolbar: React.FC<PdfToolbarProps> = ({
             size="sm"
             onClick={() => onSelectTool("date")}
             className="h-8 px-2.5 gap-1.5 text-xs"
-            title="Stamp Today's Date"
+            title="Date Stamp (D)"
           >
             <Calendar className="w-3.5 h-3.5" />
             Date
           </Button>
         </div>
 
-        {/* Form Simplicity Alignment & Formatting Controls */}
+        {/* Alignment & Format Controls */}
         <div className="flex items-center gap-1.5">
           <Button
             type="button"
@@ -165,10 +177,10 @@ export const PdfToolbar: React.FC<PdfToolbarProps> = ({
             className={`h-8 px-2 gap-1.5 text-xs ${
               baselineAlignmentEnabled ? "border-primary text-primary font-semibold" : ""
             }`}
-            title="Align typed text to document form line baseline"
+            title="Align text baseline to document lines"
           >
             <Baseline className="w-3.5 h-3.5" />
-            Baseline Guide
+            Baseline
           </Button>
 
           <Button
@@ -179,7 +191,7 @@ export const PdfToolbar: React.FC<PdfToolbarProps> = ({
             className={`h-8 px-2 gap-1.5 text-xs ${
               autoShrinkEnabled ? "border-primary text-primary font-semibold" : ""
             }`}
-            title="Automatically shrink font size so text never overflows form fields"
+            title="Auto-shrink long text to fit boxes"
           >
             <Minimize2 className="w-3.5 h-3.5" />
             Auto-Shrink
@@ -207,7 +219,7 @@ export const PdfToolbar: React.FC<PdfToolbarProps> = ({
             />
           </div>
 
-          {/* Font size selector */}
+          {/* Font size */}
           <select
             value={activeFontSize}
             onChange={(e) => onSelectFontSize(Number(e.target.value))}
@@ -220,19 +232,8 @@ export const PdfToolbar: React.FC<PdfToolbarProps> = ({
           </select>
         </div>
 
-        {/* Right Action buttons: Parties Drawer, Flatten, Print */}
+        {/* Export / Print */}
         <div className="flex items-center gap-1.5">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onOpenPartiesDrawer}
-            className="h-8 px-2.5 gap-1.5 text-xs text-primary border-primary/30 hover:bg-primary/10"
-          >
-            <Users className="w-3.5 h-3.5" />
-            Parties
-          </Button>
-
           <Button
             type="button"
             variant="outline"
@@ -255,7 +256,7 @@ export const PdfToolbar: React.FC<PdfToolbarProps> = ({
             className="h-8 px-3 gap-1.5 text-xs font-semibold bg-primary hover:bg-primary/90"
           >
             <FileCheck className="w-3.5 h-3.5" />
-            {isProcessing ? "Flattening..." : "Flatten & Download"}
+            {isProcessing ? "Saving..." : "Flatten & Download"}
           </Button>
         </div>
       </div>
@@ -265,23 +266,33 @@ export const PdfToolbar: React.FC<PdfToolbarProps> = ({
         <div className="flex items-center gap-1">
           <Button
             type="button"
-            variant="outline"
+            variant={activeTool === "text" ? "default" : "outline"}
             size="sm"
-            onClick={onOpenPartiesDrawer}
-            className="h-8 px-2 text-xs gap-1 text-primary"
+            onClick={() => onSelectTool("text")}
+            className="h-8 px-2 text-xs gap-1"
           >
-            <Users className="w-3.5 h-3.5" />
-            Parties
+            <Type className="w-3.5 h-3.5" />
+            Type
           </Button>
           <Button
             type="button"
-            variant={baselineAlignmentEnabled ? "secondary" : "ghost"}
+            variant={activeTool === "checkmark" ? "default" : "outline"}
             size="sm"
-            onClick={onToggleBaseline}
+            onClick={() => onSelectTool("checkmark")}
             className="h-8 px-2 text-xs"
-            title="Toggle baseline"
           >
-            <Baseline className="w-3.5 h-3.5" />
+            <CheckSquare className="w-3.5 h-3.5 text-emerald-600" />
+            ✓
+          </Button>
+          <Button
+            type="button"
+            variant={activeTool === "crossmark" ? "default" : "outline"}
+            size="sm"
+            onClick={() => onSelectTool("crossmark")}
+            className="h-8 px-2 text-xs"
+          >
+            <XSquare className="w-3.5 h-3.5 text-rose-600" />
+            ✕
           </Button>
         </div>
 
@@ -323,26 +334,12 @@ export const PdfToolbar: React.FC<PdfToolbarProps> = ({
               size="sm"
               className="rounded-full shadow-lg h-10 px-4 gap-2 bg-card border text-foreground hover:bg-muted"
               onClick={() => {
-                onSelectTool("initial");
-                onOpenSignatureModal("initial");
-                setMobileFabOpen(false);
-              }}
-            >
-              <Bookmark className="w-4 h-4 text-primary" />
-              Initial Stamp
-            </Button>
-
-            <Button
-              type="button"
-              size="sm"
-              className="rounded-full shadow-lg h-10 px-4 gap-2 bg-card border text-foreground hover:bg-muted"
-              onClick={() => {
                 onSelectTool("text");
                 setMobileFabOpen(false);
               }}
             >
               <Type className="w-4 h-4 text-primary" />
-              Text Field
+              Type Text
             </Button>
 
             <Button
@@ -355,7 +352,7 @@ export const PdfToolbar: React.FC<PdfToolbarProps> = ({
               }}
             >
               <CheckSquare className="w-4 h-4 text-emerald-600" />
-              Checkmark
+              Checkmark ✓
             </Button>
 
             <Button
@@ -363,12 +360,12 @@ export const PdfToolbar: React.FC<PdfToolbarProps> = ({
               size="sm"
               className="rounded-full shadow-lg h-10 px-4 gap-2 bg-card border text-foreground hover:bg-muted"
               onClick={() => {
-                onOpenPartiesDrawer();
+                onSelectTool("crossmark");
                 setMobileFabOpen(false);
               }}
             >
-              <Users className="w-4 h-4 text-primary" />
-              Transaction Parties
+              <XSquare className="w-4 h-4 text-rose-600" />
+              Put an X ✕
             </Button>
           </div>
         )}

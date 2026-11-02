@@ -21,7 +21,6 @@ import {
 } from "@/components/pdf/types";
 import { PdfViewerCanvas } from "@/components/pdf/PdfViewerCanvas";
 import { PdfToolbar } from "@/components/pdf/PdfToolbar";
-import { TransactionPartiesDrawer } from "@/components/pdf/TransactionPartiesDrawer";
 import { SignatureModal } from "@/components/pdf/SignatureModal";
 import {
   Upload,
@@ -71,11 +70,9 @@ const PdfPro = () => {
   const [signatureDataUrl, setSignatureDataUrl] = React.useState<string | null>(null);
   const [initialDataUrl, setInitialDataUrl] = React.useState<string | null>(null);
 
-  // Drawers and Modals
-  const [partiesDrawerOpen, setPartiesDrawerOpen] = React.useState(false);
+  // Signature Modals & Processing
   const [signatureModalOpen, setSignatureModalOpen] = React.useState(false);
   const [signatureModalType, setSignatureModalType] = React.useState<"signature" | "initial">("signature");
-  const [pendingStampValue, setPendingStampValue] = React.useState<string | null>(null);
   const [isProcessing, setIsProcessing] = React.useState(false);
 
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -450,13 +447,13 @@ const PdfPro = () => {
     }
   };
 
-  // Annotation management
   const handleAddAnnotation = (annData: Omit<Annotation, "id">) => {
     const newAnn: Annotation = {
       ...annData,
       id: `ann-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     };
     setAnnotations((prev) => [...prev, newAnn]);
+    return newAnn.id;
   };
 
   const handleUpdateAnnotation = (id: string, updates: Partial<Annotation>) => {
@@ -824,32 +821,16 @@ const PdfPro = () => {
             onSelectColor={setActiveColor}
             activeFontSize={activeFontSize}
             onSelectFontSize={setActiveFontSize}
-            onOpenPartiesDrawer={() => setPartiesDrawerOpen(true)}
             onOpenSignatureModal={(type) => {
               setSignatureModalType(type);
               setSignatureModalOpen(true);
             }}
             onFlattenAndDownload={() => void handleFlattenAndDownload()}
             onPrint={() => void handlePrint()}
+            hasSignature={Boolean(signatureDataUrl)}
             isProcessing={isProcessing}
             hasDocument={Boolean(pdfBytes)}
           />
-
-          {/* Pending Quick-Stamp Banner */}
-          {pendingStampValue && (
-            <div className="mb-3 px-3 py-2 bg-primary/10 border border-primary/30 rounded-lg flex items-center justify-between text-xs text-primary animate-in fade-in">
-              <span>
-                🎯 <strong>Ready to stamp:</strong> "{pendingStampValue}". Click anywhere on the contract page to place.
-              </span>
-              <button
-                type="button"
-                onClick={() => setPendingStampValue(null)}
-                className="text-xs hover:underline ml-2"
-              >
-                Cancel
-              </button>
-            </div>
-          )}
 
           {/* Canvas or Empty State */}
           {pdfBytes ? (
@@ -865,8 +846,7 @@ const PdfPro = () => {
               onUpdateAnnotation={handleUpdateAnnotation}
               onDeleteAnnotation={handleDeleteAnnotation}
               activeTool={activeTool}
-              pendingStampValue={pendingStampValue}
-              onClearPendingStamp={() => setPendingStampValue(null)}
+              onSelectTool={setActiveTool}
               autoShrinkEnabled={autoShrinkEnabled}
               baselineAlignmentEnabled={baselineAlignmentEnabled}
               activeColor={activeColor}
@@ -901,22 +881,6 @@ const PdfPro = () => {
           )}
         </div>
       </div>
-
-      {/* Transaction Parties & Auto-Fill Drawer */}
-      <TransactionPartiesDrawer
-        open={partiesDrawerOpen}
-        onOpenChange={setPartiesDrawerOpen}
-        parties={parties}
-        onUpdateParties={setParties}
-        onSelectFieldToStamp={(fieldName, value) => {
-          setPendingStampValue(value);
-          toast({
-            title: `Selected ${fieldName}`,
-            description: `Click anywhere on the document to stamp "${value}"`,
-          });
-        }}
-        isMobile={isMobile}
-      />
 
       {/* Digital Signature & Initial Pad Modal */}
       <SignatureModal

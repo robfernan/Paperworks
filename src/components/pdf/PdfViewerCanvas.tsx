@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import { Annotation, ToolMode } from "./types";
-import { X, Move, Check, Calendar, Baseline, ZoomIn, ZoomOut } from "lucide-react";
+import { X, Move, ZoomIn, ZoomOut } from "lucide-react";
 
 // Configure worker path
 if (typeof window !== "undefined") {
@@ -19,12 +19,11 @@ interface PdfViewerCanvasProps {
   scale: number;
   onScaleChange: (scale: number) => void;
   annotations: Annotation[];
-  onAddAnnotation: (ann: Omit<Annotation, "id">) => void;
+  onAddAnnotation: (ann: Omit<Annotation, "id">) => string;
   onUpdateAnnotation: (id: string, updates: Partial<Annotation>) => void;
   onDeleteAnnotation: (id: string) => void;
   activeTool: ToolMode;
-  pendingStampValue?: string | null;
-  onClearPendingStamp?: () => void;
+  onSelectTool?: (tool: ToolMode) => void;
   autoShrinkEnabled: boolean;
   baselineAlignmentEnabled: boolean;
   activeColor: string;
@@ -46,8 +45,7 @@ export const PdfViewerCanvas: React.FC<PdfViewerCanvasProps> = ({
   onUpdateAnnotation,
   onDeleteAnnotation,
   activeTool,
-  pendingStampValue,
-  onClearPendingStamp,
+  onSelectTool,
   autoShrinkEnabled,
   baselineAlignmentEnabled,
   activeColor,
@@ -63,7 +61,7 @@ export const PdfViewerCanvas: React.FC<PdfViewerCanvasProps> = ({
   const [selectedAnnId, setSelectedAnnId] = useState<string | null>(null);
   const [pageSize, setPageSize] = useState<{ width: number; height: number }>({ width: 612, height: 792 });
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
-  const [renderLoading, setRenderLoading] = useState(false);
+  const [, setRenderLoading] = useState(false);
 
   // Touch pinch-to-zoom & pan refs
   const touchStartDist = useRef<number | null>(null);
@@ -138,6 +136,41 @@ export const PdfViewerCanvas: React.FC<PdfViewerCanvasProps> = ({
     void renderPage();
   }, [renderPage]);
 
+  // Keyboard Shortcuts (T: Text, C: Check, X: Cross, S: Sign, I: Initial, D: Date, V: Select, Backspace/Delete)
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept if user is typing in an input
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
+        return;
+      }
+
+      if (e.key === "t" || e.key === "T") {
+        onSelectTool?.("text");
+      } else if (e.key === "c" || e.key === "C") {
+        onSelectTool?.("checkmark");
+      } else if (e.key === "x" || e.key === "X") {
+        onSelectTool?.("crossmark");
+      } else if (e.key === "s" || e.key === "S") {
+        onSelectTool?.("signature");
+        if (!signatureDataUrl) onRequestSignatureModal("signature");
+      } else if (e.key === "i" || e.key === "I") {
+        onSelectTool?.("initial");
+        if (!initialDataUrl) onRequestSignatureModal("initial");
+      } else if (e.key === "d" || e.key === "D") {
+        onSelectTool?.("date");
+      } else if (e.key === "v" || e.key === "V" || e.key === "Escape") {
+        onSelectTool?.("select");
+      } else if ((e.key === "Delete" || e.key === "Backspace") && selectedAnnId) {
+        onDeleteAnnotation(selectedAnnId);
+        setSelectedAnnId(null);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedAnnId, onSelectTool, signatureDataUrl, initialDataUrl, onDeleteAnnotation, onRequestSignatureModal]);
+
   // Touch events for Mobile Pinch-to-Zoom
   useEffect(() => {
     const el = containerRef.current;
@@ -181,7 +214,7 @@ export const PdfViewerCanvas: React.FC<PdfViewerCanvasProps> = ({
     };
   }, [scale, onScaleChange]);
 
-  // Handle click on canvas to place annotations or quick stamp
+  // Handle click on canvas to place annotations instantly
   const handlePageClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isDraggingAnn.current) return;
     if (!overlayRef.current) return;
@@ -190,40 +223,24 @@ export const PdfViewerCanvas: React.FC<PdfViewerCanvasProps> = ({
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
 
-    const xPercent = Math.min(Math.max((clickX / rect.width) * 100, 0), 95);
-    const yPercent = Math.min(Math.max((clickY / rect.height) * 100, 0), 95);
-
-    // If quick-stamping a transaction party value
-    if (pendingStampValue) {
-      onAddAnnotation({
-        page: currentPage,
-        type: "text",
-        x: xPercent,
-        y: yPercent,
-        value: pendingStampValue,
-        fontSize: activeFontSize,
-        color: activeColor,
-        autoShrink: autoShrinkEnabled,
-        alignBaseline: baselineAlignmentEnabled,
-      });
-      onClearPendingStamp?.();
-      return;
-    }
+    const xPercent = Math.min(Math.max((clickX / rect.width) * 100, 0), 96);
+    const yPercent = Math.min(Math.max((clickY / rect.height) * 100, 0), 96);
 
     if (activeTool === "text") {
-      onAddAnnotation({
+      const newId = onAddAnnotation({
         page: currentPage,
         type: "text",
         x: xPercent,
         y: yPercent,
-        value: "Type here...",
+        value: "",
         fontSize: activeFontSize,
         color: activeColor,
         autoShrink: autoShrinkEnabled,
         alignBaseline: baselineAlignmentEnabled,
       });
+      setSelectedAnnId(newId);
     } else if (activeTool === "checkmark") {
-      onAddAnnotation({
+      const newId = onAddAnnotation({
         page: currentPage,
         type: "checkmark",
         x: xPercent,
@@ -231,8 +248,9 @@ export const PdfViewerCanvas: React.FC<PdfViewerCanvasProps> = ({
         value: "✓",
         color: activeColor,
       });
+      setSelectedAnnId(newId);
     } else if (activeTool === "crossmark") {
-      onAddAnnotation({
+      const newId = onAddAnnotation({
         page: currentPage,
         type: "crossmark",
         x: xPercent,
@@ -240,13 +258,14 @@ export const PdfViewerCanvas: React.FC<PdfViewerCanvasProps> = ({
         value: "✕",
         color: activeColor,
       });
+      setSelectedAnnId(newId);
     } else if (activeTool === "date") {
       const today = new Date().toLocaleDateString("en-US", {
         month: "2-digit",
         day: "2-digit",
         year: "numeric",
       });
-      onAddAnnotation({
+      const newId = onAddAnnotation({
         page: currentPage,
         type: "date",
         x: xPercent,
@@ -256,29 +275,32 @@ export const PdfViewerCanvas: React.FC<PdfViewerCanvasProps> = ({
         color: activeColor,
         alignBaseline: baselineAlignmentEnabled,
       });
+      setSelectedAnnId(newId);
     } else if (activeTool === "signature") {
       if (!signatureDataUrl) {
         onRequestSignatureModal("signature");
       } else {
-        onAddAnnotation({
+        const newId = onAddAnnotation({
           page: currentPage,
           type: "signature",
           x: xPercent,
           y: yPercent,
           value: signatureDataUrl,
         });
+        setSelectedAnnId(newId);
       }
     } else if (activeTool === "initial") {
       if (!initialDataUrl) {
         onRequestSignatureModal("initial");
       } else {
-        onAddAnnotation({
+        const newId = onAddAnnotation({
           page: currentPage,
           type: "initial",
           x: xPercent,
           y: yPercent,
           value: initialDataUrl,
         });
+        setSelectedAnnId(newId);
       }
     }
   };
@@ -328,11 +350,11 @@ export const PdfViewerCanvas: React.FC<PdfViewerCanvasProps> = ({
   return (
     <div
       ref={containerRef}
-      className="relative flex-1 flex flex-col items-center justify-start overflow-auto p-4 sm:p-8 bg-muted/20 min-h-[500px]"
+      className="relative flex-1 flex flex-col items-center justify-start overflow-auto p-3 sm:p-6 bg-muted/20 min-h-[500px]"
       onClick={() => setSelectedAnnId(null)}
     >
       {/* Zoom / Page Floating Navigator */}
-      <div className="sticky top-2 z-20 flex items-center gap-2 bg-background/90 backdrop-blur-md px-3 py-1.5 rounded-full border shadow-sm text-xs mb-4">
+      <div className="sticky top-2 z-20 flex items-center gap-2 bg-background/90 backdrop-blur-md px-3 py-1.5 rounded-full border shadow-sm text-xs mb-3">
         <button
           type="button"
           disabled={currentPage <= 1}
@@ -398,7 +420,7 @@ export const PdfViewerCanvas: React.FC<PdfViewerCanvasProps> = ({
         <div
           ref={overlayRef}
           className={`absolute inset-0 z-10 ${
-            activeTool !== "select" || pendingStampValue ? "cursor-crosshair" : "cursor-default"
+            activeTool !== "select" ? "cursor-crosshair" : "cursor-default"
           }`}
           onClick={handlePageClick}
         >
@@ -455,7 +477,14 @@ const AnnotationItem: React.FC<AnnotationItemProps> = ({
   const textRef = useRef<HTMLInputElement | null>(null);
   const [computedFontSize, setComputedFontSize] = useState<number>(ann.fontSize || 12);
 
-  // Form Simplicity Auto-Shrink Calculation
+  // Auto-focus when newly placed or selected
+  useEffect(() => {
+    if (isSelected && (ann.type === "text" || ann.type === "date") && textRef.current) {
+      textRef.current.focus();
+    }
+  }, [isSelected, ann.type]);
+
+  // Dynamic Auto-Shrink Font Calculation
   useEffect(() => {
     if (ann.type !== "text" && ann.type !== "date") return;
     if (!autoShrink || !textRef.current) {
@@ -463,13 +492,10 @@ const AnnotationItem: React.FC<AnnotationItemProps> = ({
       return;
     }
 
-    const input = textRef.current;
     const baseSize = ann.fontSize || 12;
-    // Calculate if text overflows default width (approx 160px base)
     const len = (ann.value || "").length;
-    if (len > 25) {
-      // Dynamic auto-shrink formula
-      const shrinkRatio = Math.max(0.65, 25 / len);
+    if (len > 24) {
+      const shrinkRatio = Math.max(0.6, 24 / len);
       const newSize = Math.max(8, Math.round(baseSize * shrinkRatio));
       setComputedFontSize(newSize);
     } else {
@@ -493,10 +519,10 @@ const AnnotationItem: React.FC<AnnotationItemProps> = ({
       {/* Baseline Alignment Guide Indicator */}
       {baselineGuide && isSelected && (
         <div
-          className="absolute -bottom-1 left-[-20px] right-[-20px] border-b-2 border-dashed border-red-500/80 pointer-events-none flex items-center justify-between"
+          className="absolute -bottom-1 left-[-16px] right-[-16px] border-b-2 border-dashed border-red-500/80 pointer-events-none flex items-center justify-between"
           style={{ transform: "translateY(50%)" }}
         >
-          <span className="text-[9px] bg-red-600 text-white font-mono px-1 rounded-sm uppercase tracking-tighter">
+          <span className="text-[8px] bg-red-600 text-white font-mono px-1 rounded-sm uppercase tracking-tighter">
             Baseline
           </span>
         </div>
@@ -519,33 +545,52 @@ const AnnotationItem: React.FC<AnnotationItemProps> = ({
           ref={textRef}
           type="text"
           value={ann.value}
+          placeholder="Click and type..."
           onChange={(e) => onUpdate({ value: e.target.value })}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === "Escape") {
+              textRef.current?.blur();
+            }
+          }}
           style={{
             fontSize: `${computedFontSize * scale}px`,
             color: ann.color || "#000000",
             lineHeight: 1.1,
+            minWidth: "48px",
+            width: `${Math.max(50, Math.min(500, (ann.value.length || 6) * (computedFontSize * scale * 0.65)))}px`,
           }}
-          className="bg-transparent border border-transparent focus:border-primary focus:bg-white/80 rounded px-1.5 py-0.5 outline-none font-sans font-medium"
+          className="bg-transparent border border-transparent hover:border-primary/40 focus:border-primary focus:bg-white/95 rounded px-1.5 py-0.5 outline-none font-sans font-medium transition-colors"
         />
       ) : ann.type === "checkmark" ? (
         <div
+          onClick={(e) => {
+            e.stopPropagation();
+            // Toggle checkmark to crossmark or back
+            onUpdate({ value: ann.value === "✓" ? "✕" : "✓", type: ann.value === "✓" ? "crossmark" : "checkmark" });
+          }}
           style={{
             fontSize: `${22 * scale}px`,
             color: ann.color || "#15803d",
             lineHeight: 1,
           }}
-          className="font-bold px-1 select-none text-emerald-700"
+          className="font-bold px-1 select-none text-emerald-700 cursor-pointer hover:scale-110 transition-transform"
+          title="Click to toggle ✓ / ✕"
         >
           ✓
         </div>
       ) : ann.type === "crossmark" ? (
         <div
+          onClick={(e) => {
+            e.stopPropagation();
+            onUpdate({ value: ann.value === "✕" ? "✓" : "✕", type: ann.value === "✕" ? "checkmark" : "crossmark" });
+          }}
           style={{
             fontSize: `${20 * scale}px`,
             color: ann.color || "#b91c1c",
             lineHeight: 1,
           }}
-          className="font-bold px-1 select-none text-red-700"
+          className="font-bold px-1 select-none text-red-700 cursor-pointer hover:scale-110 transition-transform"
+          title="Click to toggle ✕ / ✓"
         >
           ✕
         </div>
