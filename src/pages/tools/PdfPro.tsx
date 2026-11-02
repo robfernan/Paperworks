@@ -22,6 +22,7 @@ import {
 import { PdfViewerCanvas } from "@/components/pdf/PdfViewerCanvas";
 import { PdfToolbar } from "@/components/pdf/PdfToolbar";
 import { SignatureModal } from "@/components/pdf/SignatureModal";
+import { generateSampleContractPdf } from "@/lib/sampleContract";
 import {
   Upload,
   FileText,
@@ -244,25 +245,7 @@ const PdfPro = () => {
   const loadSampleContract = async () => {
     setIsProcessing(true);
     try {
-      let bytes: Uint8Array;
-      const res = await fetch("./templates/sample_contract.pdf").catch(() => null);
-      if (res && res.ok) {
-        const buffer = await res.arrayBuffer();
-        bytes = new Uint8Array(buffer);
-      } else {
-        const doc = await PDFDocument.create();
-        const p1 = doc.addPage([612, 792]);
-        const helveticaBold = await doc.embedStandardFont(StandardFonts.HelveticaBold);
-        p1.drawText("RESIDENTIAL LEASE & PURCHASE AGREEMENT", {
-          x: 50,
-          y: 720,
-          size: 14,
-          font: helveticaBold,
-          color: rgb(0.1, 0.15, 0.3),
-        });
-        bytes = await doc.save();
-      }
-
+      const bytes = await generateSampleContractPdf();
       setPdfBytes(bytes);
       setFileName("Residential_Lease_Purchase_Agreement.pdf");
       setProjectTitle("Residential Lease & Purchase Agreement");
@@ -278,6 +261,11 @@ const PdfPro = () => {
       });
     } catch (err) {
       console.error("Error loading template:", err);
+      toast({
+        title: "Template Error",
+        description: "Could not generate contract template.",
+        variant: "destructive",
+      });
     } finally {
       setIsProcessing(false);
     }

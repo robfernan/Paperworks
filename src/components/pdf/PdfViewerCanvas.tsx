@@ -1,14 +1,21 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import * as pdfjsLib from "pdfjs-dist";
+import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { Annotation, ToolMode } from "./types";
 import { X, Move, ZoomIn, ZoomOut } from "lucide-react";
 
-// Configure worker path
+// Configure worker path with Vite-resolved URL
 if (typeof window !== "undefined") {
   const isExtension = Boolean(window.chrome?.runtime?.id);
-  pdfjsLib.GlobalWorkerOptions.workerSrc = isExtension
-    ? window.chrome.runtime.getURL("pdf.worker.min.mjs")
-    : "/pdf.worker.min.mjs";
+  if (isExtension) {
+    try {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = window.chrome.runtime.getURL("pdf.worker.min.mjs");
+    } catch {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+    }
+  } else {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+  }
 }
 
 interface PdfViewerCanvasProps {
@@ -94,14 +101,25 @@ export const PdfViewerCanvas: React.FC<PdfViewerCanvasProps> = ({
     };
   }, [pdfBytes]);
 
+  const renderTaskRef = useRef<any>(null);
+
   // Render Page onto Canvas
   const renderPage = useCallback(async () => {
     if (!pdfDoc || !canvasRef.current) return;
 
+    if (renderTaskRef.current) {
+      try {
+        renderTaskRef.current.cancel();
+      } catch {
+        // ignore cancellation
+      }
+      renderTaskRef.current = null;
+    }
+
     try {
       setRenderLoading(true);
       const page = await pdfDoc.getPage(currentPage);
-      const viewport = page.getViewport({ scale: scale });
+      const viewport = page.getViewport({ scale });
 
       setPageSize({ width: viewport.width, height: viewport.height });
 
@@ -110,24 +128,30 @@ export const PdfViewerCanvas: React.FC<PdfViewerCanvasProps> = ({
       if (!ctx) return;
 
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = viewport.width * dpr;
-      canvas.height = viewport.height * dpr;
+      canvas.width = Math.floor(viewport.width * dpr);
+      canvas.height = Math.floor(viewport.height * dpr);
       canvas.style.width = `${viewport.width}px`;
       canvas.style.height = `${viewport.height}px`;
 
-      ctx.save();
-      ctx.scale(dpr, dpr);
+      // Fill background white so canvas is never transparent
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      const renderContext = {
+      const transform = dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : undefined;
+      const renderTask = page.render({
         canvasContext: ctx,
-        viewport: viewport,
-      };
+        transform,
+        viewport,
+      });
 
-      await page.render(renderContext).promise;
-      ctx.restore();
-    } catch (err) {
-      console.warn("Render page cancelled or failed:", err);
+      renderTaskRef.current = renderTask;
+      await renderTask.promise;
+    } catch (err: any) {
+      if (err?.name !== "RenderingCancelledException") {
+        console.warn("Render page cancelled or failed:", err);
+      }
     } finally {
+      renderTaskRef.current = null;
       setRenderLoading(false);
     }
   }, [pdfDoc, currentPage, scale]);
