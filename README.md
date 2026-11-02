@@ -2,12 +2,13 @@
 
 **Live demo:** https://robfernan.github.io/Paperworks/
 
-**Paperworks** is a free, offline-first document and business automation suite. Create invoices and proposals, ATS-friendly resumes, and print-ready business cards, and mark up PDFs — in the browser, with no account and no file upload.
+**Paperworks** is a free, offline-first document and business automation suite. Create invoices and proposals, ATS-friendly resumes, and print-ready business cards, and fill, sign, and mark up PDFs — in the browser or via the Chrome Extension, with no account and zero file uploads.
 
-**Web is live.** Native desktop and mobile packaging is in progress (**coming soon**).
+**Web is live.** Manifest V3 Chromium Extension is built and available. Native desktop and mobile packaging is in progress (**coming soon**).
 
 [![Live demo](https://img.shields.io/badge/Live_demo-GitHub_Pages-4f46e5?style=for-the-badge&logo=github)](https://robfernan.github.io/Paperworks/)
 [![Web](https://img.shields.io/badge/Web-Live-22c55e?style=for-the-badge)](https://robfernan.github.io/Paperworks/)
+[![Extension](https://img.shields.io/badge/Chrome_Extension-MV3_Ready-3b82f6?style=for-the-badge&logo=googlechrome)](./src/extension)
 [![Desktop](https://img.shields.io/badge/Desktop-Coming_soon-lightgrey?style=for-the-badge)](https://robfernan.github.io/Paperworks/)
 [![Mobile](https://img.shields.io/badge/Mobile-Coming_soon-lightgrey?style=for-the-badge)](https://robfernan.github.io/Paperworks/)
 [![Built with Bun](https://img.shields.io/badge/Built_with-Bun-fbf0df?style=for-the-badge&logo=bun)](https://bun.sh)
@@ -60,19 +61,28 @@ Documents are compiled in the browser with `pdf-lib` and `jsPDF`, instead of bei
 * **Service and product catalog:** Save preset goods and services with SKUs, descriptions, and default rates for one-click line items.
 * **Multi-currency:** Switch among `$`, `€`, `£`, `¥`, `CHF`, `C$`, `A$`, and `₹`.
 * **Deposits and balance:** Log partial payments, tax rates, and discounts with a live balance due.
+* **Sign in PDF Pro:** One-click bridge that pushes the rendered invoice directly into PDF Pro for digital signing, stamping, and checkmarks.
 * **PDF and Word export:** Print-ready PDFs and editable `.docx` files with financial tables.
 
-### PDF annotation
-* **In-browser engine:** Page work runs locally with `pdf-lib` and `jsPDF`.
-* **Markup:** Checkmarks, rectangles, highlights, circles, and notes, with opacity controls.
-* **Signature pad:** Draw or type a signature and reuse it from a local signature vault.
-* **Stamps:** `APPROVED`, `CONFIDENTIAL`, `VOID`, and `FINAL DRAFT`.
-* **Page tools:** Reorder, rotate (90°), and extract pages.
+### PDF Pro (Editor & Signer)
+* **Local vector engine:** In-browser canvas rendering via bundled `pdfjs-dist` and native vector output with `pdf-lib`. Zero external network calls.
+* **Click-to-Type with Auto-Shrink:** Type anywhere on flat or scanned forms. Text dynamically scales down to fit bounded box dimensions.
+* **Baseline alignment:** Snaps typed entries onto underlying printed form lines for professional contract filling.
+* **Vector Checkmarks & Crosses:** Place checkmarks (✓) and crosses (✕) with crisp, resolution-independent vector rendering.
+* **Digital Signatures & Initials:** Draw or upload signatures and initials to stamp onto signing blocks.
+* **Pre-populated Sample Document:** Instant 2-page non-fillable contract template to test typing, checkmarking, and signing.
+* **One-Click Flattening:** Permanently bakes all text fields, vector marks, and signatures into the PDF stream before downloading.
+
+### Chromium Extension (Manifest V3)
+* **Automatic PDF Interception:** Detects `.pdf` URLs and `application/pdf` MIME types, offering an in-page banner to jump straight to the editor.
+* **Context Menu:** Right-click any PDF link or open document and select *"Open and Fill in Paperworks"*.
+* **Extension Popup:** Quick drag-and-drop zone to open and fill any PDF directly.
 
 ### Resumes
 * **Single-column layouts** aimed at applicant tracking systems.
 * **Type styles:** Modern sans (Inter), executive serif (Georgia/Times), and technical mono (Courier).
 * **Themes:** Modern Sky, Classic Slate, Executive Blue, Minimalist Mono, and Forest Emerald.
+* **Sign in PDF Pro:** Send generated resumes directly to PDF Pro to initial and sign before submission.
 * **PDF and Word export.**
 
 ### Business cards
@@ -93,6 +103,7 @@ Documents are compiled in the browser with `pdf-lib` and `jsPDF`, instead of bei
 | **Price** | **Free (MIT)** | Paid subscription | Paid subscription | Paid subscription |
 | **Where files are processed** | **On your device** | Cloud upload | Adobe cloud | Cloud upload |
 | **PDF annotation and sign** | **Included** | Limited | Yes | Limited |
+| **Chrome Extension (MV3)** | **Included** | None | Yes (Cloud) | Limited |
 | **Resume builder** | **Included (.docx + PDF)** | Design-heavy layouts | None | None |
 | **Itemized invoices** | **Included (.docx + PDF)** | Basic templates | None | None |
 | **Commercial print bleed** | **Included (0.125")** | Pro only | InDesign | None |
@@ -112,6 +123,7 @@ Documents are compiled in the browser with `pdf-lib` and `jsPDF`, instead of bei
 │                  Unified Document Core & Command Engine                     │
 │   • Universal Command Palette (Ctrl+K / ⌘K)                                 │
 │   • Deep Undo/Redo Transaction History (Ctrl+Z / Ctrl+Y)                    │
+│   • PDF Pro Local Engine (pdfjs-dist + pdf-lib Vector Graphics)             │
 │   • Autosave Snapshot Timeline (IndexedDB v3 Stores)                        │
 └──────────────────────────────────────┬──────────────────────────────────────┘
                                        │
@@ -119,9 +131,9 @@ Documents are compiled in the browser with `pdf-lib` and `jsPDF`, instead of bei
 │                    Platform Storage Bridge Abstraction                      │
 │                           (src/lib/platformBridge.ts)                       │
 ├───────────────────────────────┬───────────────────────────────┬─────────────┤
-│ Desktop · coming soon         │ Mobile · coming soon          │  Web · live │
-│ Wails packaging, in progress  │ Capacitor packaging           │  IndexedDB  │
-│ (not released yet)            │ (not released yet)            │  blob store │
+│ Chrome Extension (MV3) · ready│ Desktop · coming soon         │  Web · live │
+│ Service Worker & Interceptor  │ Wails packaging, in progress  │  IndexedDB  │
+│ dist-extension/               │ (not released yet)            │  blob store │
 └───────────────────────────────┴───────────────────────────────┴─────────────┘
 ```
 
@@ -136,15 +148,26 @@ The web build is the released product. Wails and Capacitor adapters in this repo
 git clone https://github.com/robfernan/Paperworks.git
 cd Paperworks
 
-# Install dependencies with Bun
-bun install
+# Install dependencies (Node or Bun)
+npm install # or bun install
 
 # Start local Vite development server
-bun run dev
+npm run dev # or bun run dev
 
-# Build production bundle
-bun run build
+# Run unit tests and type checks
+npm run test
+npm run typecheck
+
+# Build both Web PWA and Chrome Extension
+npm run build:all
 ```
+
+### Loading the Unpacked Chrome Extension
+1. Run `npm run build:extension` (outputs to `dist-extension/`).
+2. Open Chrome or Chromium and navigate to `chrome://extensions`.
+3. Enable **Developer mode** in the top right corner.
+4. Click **Load unpacked** and select the `dist-extension` folder inside this repository.
+5. (Optional) Enable *“Allow access to file URLs”* in the extension details to intercept local PDF files.
 
 Or skip the clone and use the [live demo](https://robfernan.github.io/Paperworks/).
 
