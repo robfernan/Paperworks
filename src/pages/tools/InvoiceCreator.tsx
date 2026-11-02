@@ -1,6 +1,6 @@
 import * as React from "react";
 import { jsPDF } from "jspdf";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   Receipt,
   Plus,
@@ -16,11 +16,13 @@ import {
   FileDown,
   DollarSign,
   Wallet,
+  PenTool,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { uint8ToBase64 } from "@/lib/binary";
 import {
   createDocument,
   deleteDocument,
@@ -99,6 +101,7 @@ const emptyInvoice = (): InvoicePayload => ({
 
 const InvoiceCreator = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [documents, setDocuments] = React.useState<DocumentRecord<InvoicePayload>[]>([]);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [title, setTitle] = React.useState("Untitled Invoice");
@@ -255,7 +258,7 @@ const InvoiceCreator = () => {
     }
   };
 
-  const onExportPdf = async () => {
+  const buildInvoicePdfDoc = () => {
     const doc = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
 
     if (invoiceData.logo) {
@@ -350,8 +353,45 @@ const InvoiceCreator = () => {
     doc.setFont("helvetica", "normal");
     doc.text(doc.splitTextToSize(invoiceData.notes || "-", 180), 15, y + 5);
 
+    return doc;
+  };
+
+  const onExportPdf = async () => {
+    const doc = buildInvoicePdfDoc();
     doc.save(`${title || "invoice"}.pdf`);
     toast.success("Invoice PDF generated and downloaded");
+  };
+
+  const onOpenInPdfPro = async () => {
+    try {
+      const doc = buildInvoicePdfDoc();
+      const arrayBuffer = doc.output("arraybuffer");
+      const base64 = uint8ToBase64(new Uint8Array(arrayBuffer));
+      const fileName = `${title || "Invoice"}.pdf`;
+
+      const record = await createDocument<any>("pdf", {
+        toolType: "pdf",
+        title: title || "Invoice Document",
+        payload: {
+          fileName,
+          pdfBase64: base64,
+          annotations: [],
+          parties: {
+            buyer: invoiceData.clientName || "",
+            seller: invoiceData.companyName || "",
+            propertyAddress: invoiceData.clientAddress || "",
+          },
+          signatureDataUrl: null,
+          initialDataUrl: null,
+        },
+      });
+
+      toast.success("Invoice sent to PDF Pro for signing");
+      navigate(`/tools/pdf-pro?doc=${record.id}`);
+    } catch (err) {
+      toast.error("Failed to open invoice in PDF Pro");
+      console.error(err);
+    }
   };
 
   return (
@@ -420,6 +460,11 @@ const InvoiceCreator = () => {
           <Button size="sm" variant="outline" onClick={handleExportDocx} className="gap-1.5 h-8 text-xs font-semibold">
             <FileDown className="w-3.5 h-3.5 text-blue-600" />
             Export Word (.docx)
+          </Button>
+
+          <Button size="sm" variant="secondary" onClick={onOpenInPdfPro} className="gap-1.5 h-8 text-xs font-semibold">
+            <PenTool className="w-3.5 h-3.5 text-primary" />
+            Sign in PDF Pro
           </Button>
 
           <Button size="sm" variant="default" onClick={onExportPdf} className="gap-1.5 h-8 text-xs font-semibold">

@@ -27,7 +27,7 @@ export async function generateSampleContractPdf(): Promise<Uint8Array> {
     color: rgb(0.08, 0.15, 0.3),
   });
 
-  page1.drawText("STANDARD REAL ESTATE FORM • NON-FILLABLE FLAT DOCUMENT", {
+  page1.drawText("STANDARD AGREEMENT FORM • NON-FILLABLE FLAT DOCUMENT", {
     x: 40,
     y: height - 74,
     size: 8,

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { jsPDF } from "jspdf";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   FileText,
   Plus,
@@ -14,11 +14,13 @@ import {
   GraduationCap,
   FolderGit2,
   Sparkles,
+  PenTool,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { uint8ToBase64 } from "@/lib/binary";
 import {
   createDocument,
   deleteDocument,
@@ -105,6 +107,7 @@ const typographyStyles: Record<ResumeTypography, { class: string; label: string;
 
 const ResumeBuilder = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [documents, setDocuments] = React.useState<DocumentRecord<ResumePayload>[]>([]);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [title, setTitle] = React.useState("Untitled Resume");
@@ -216,7 +219,7 @@ const ResumeBuilder = () => {
     }
   };
 
-  const exportPdf = () => {
+  const buildResumePdfDoc = () => {
     const doc = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
     const selectedTypo = typographyStyles[resumeData.typography || "sans"];
     const pdfFont = selectedTypo.pdfFont;
@@ -327,8 +330,45 @@ const ResumeBuilder = () => {
       doc.text(doc.splitTextToSize(resumeData.skills, 180), 15, y);
     }
 
+    return doc;
+  };
+
+  const exportPdf = () => {
+    const doc = buildResumePdfDoc();
     doc.save(`${title || "resume"}.pdf`);
     toast.success("Resume PDF downloaded");
+  };
+
+  const onOpenInPdfPro = async () => {
+    try {
+      const doc = buildResumePdfDoc();
+      const arrayBuffer = doc.output("arraybuffer");
+      const base64 = uint8ToBase64(new Uint8Array(arrayBuffer));
+      const fileName = `${title || "Resume"}.pdf`;
+
+      const record = await createDocument<any>("pdf", {
+        toolType: "pdf",
+        title: title || "Resume Document",
+        payload: {
+          fileName,
+          pdfBase64: base64,
+          annotations: [],
+          parties: {
+            buyer: "",
+            seller: resumeData.fullName || "",
+            propertyAddress: resumeData.location || "",
+          },
+          signatureDataUrl: null,
+          initialDataUrl: null,
+        },
+      });
+
+      toast.success("Resume sent to PDF Pro for signing");
+      navigate(`/tools/pdf-pro?doc=${record.id}`);
+    } catch (err) {
+      toast.error("Failed to open resume in PDF Pro");
+      console.error(err);
+    }
   };
 
   const theme = themeStyles[resumeData.theme] || themeStyles.modern;
@@ -392,6 +432,11 @@ const ResumeBuilder = () => {
           <Button size="sm" variant="outline" onClick={handleExportDocx} className="gap-1.5 h-8 text-xs font-semibold">
             <FileText className="w-3.5 h-3.5 text-blue-500" />
             Export DOCX
+          </Button>
+
+          <Button size="sm" variant="secondary" onClick={onOpenInPdfPro} className="gap-1.5 h-8 text-xs font-semibold">
+            <PenTool className="w-3.5 h-3.5 text-primary" />
+            Sign in PDF Pro
           </Button>
 
           <Button size="sm" variant="outline" onClick={exportPdf} className="gap-1.5 h-8 text-xs font-semibold">

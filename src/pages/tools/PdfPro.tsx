@@ -257,7 +257,7 @@ const PdfPro = () => {
 
       toast({
         title: "Template Loaded",
-        description: "2-Page Real Estate Contract ready to type, checkmark, and sign.",
+        description: "2-Page document template ready to type, checkmark, and sign.",
       });
     } catch (err) {
       console.error("Error loading template:", err);
@@ -546,7 +546,7 @@ const PdfPro = () => {
             </span>
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-            Real estate contract forms, baseline text alignment, auto-shrink, and digital stamps.
+            Baseline text alignment, auto-shrink, signature stamps, and one-click flattening.
           </p>
         </div>
 
@@ -566,7 +566,7 @@ const PdfPro = () => {
 
           <Button size="sm" variant="secondary" onClick={() => void loadSampleContract()} className="gap-1.5 text-xs">
             <Sparkles className="w-3.5 h-3.5 text-primary" />
-            Load Contract Form Template
+            Load Document Template
           </Button>
 
           <Button
@@ -737,7 +737,7 @@ const PdfPro = () => {
               <div className="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-4">
                 <FileText className="w-7 h-7" />
               </div>
-              <h3 className="text-base font-semibold mb-1">No Contract Loaded</h3>
+              <h3 className="text-base font-semibold mb-1">No Document Loaded</h3>
               <p className="text-xs text-muted-foreground max-w-sm mb-5">
                 Load a PDF to start auto-shrinking text fields, placing baseline-aligned annotations, and drawing signatures.
               </p>
@@ -748,7 +748,7 @@ const PdfPro = () => {
                 </Button>
                 <Button size="sm" variant="secondary" onClick={() => void loadSampleContract()} className="gap-1.5">
                   <Sparkles className="w-4 h-4 text-primary" />
-                  Try Contract Form Template
+                  Try Document Template
                 </Button>
               </div>
             </div>
