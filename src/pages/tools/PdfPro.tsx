@@ -341,19 +341,31 @@ const PdfPro = () => {
             color: rgb(r, g, b),
           });
         } else if (ann.type === "checkmark") {
-          page.drawText("✓", {
-            x: xPt,
-            y: yPt - 8,
-            size: 16,
-            font: helvetica,
+          // Clean vector checkmark (two lines)
+          page.drawLine({
+            start: { x: xPt, y: yPt - 2 },
+            end: { x: xPt + 4, y: yPt - 6 },
+            thickness: 2,
+            color: rgb(0.08, 0.5, 0.24),
+          });
+          page.drawLine({
+            start: { x: xPt + 4, y: yPt - 6 },
+            end: { x: xPt + 12, y: yPt + 4 },
+            thickness: 2,
             color: rgb(0.08, 0.5, 0.24),
           });
         } else if (ann.type === "crossmark") {
-          page.drawText("✕", {
-            x: xPt,
-            y: yPt - 8,
-            size: 16,
-            font: helvetica,
+          // Clean vector crossmark / X (two crossing lines)
+          page.drawLine({
+            start: { x: xPt, y: yPt + 4 },
+            end: { x: xPt + 10, y: yPt - 6 },
+            thickness: 2,
+            color: rgb(0.72, 0.11, 0.11),
+          });
+          page.drawLine({
+            start: { x: xPt, y: yPt - 6 },
+            end: { x: xPt + 10, y: yPt + 4 },
+            thickness: 2,
             color: rgb(0.72, 0.11, 0.11),
           });
         } else if (ann.type === "signature" || ann.type === "initial") {
@@ -432,6 +444,44 @@ const PdfPro = () => {
             size: ann.fontSize || 12,
             font: helvetica,
           });
+        } else if (ann.type === "checkmark") {
+          page.drawLine({
+            start: { x: xPt, y: yPt - 2 },
+            end: { x: xPt + 4, y: yPt - 6 },
+            thickness: 2,
+            color: rgb(0.08, 0.5, 0.24),
+          });
+          page.drawLine({
+            start: { x: xPt + 4, y: yPt - 6 },
+            end: { x: xPt + 12, y: yPt + 4 },
+            thickness: 2,
+            color: rgb(0.08, 0.5, 0.24),
+          });
+        } else if (ann.type === "crossmark") {
+          page.drawLine({
+            start: { x: xPt, y: yPt + 4 },
+            end: { x: xPt + 10, y: yPt - 6 },
+            thickness: 2,
+            color: rgb(0.72, 0.11, 0.11),
+          });
+          page.drawLine({
+            start: { x: xPt, y: yPt - 6 },
+            end: { x: xPt + 10, y: yPt + 4 },
+            thickness: 2,
+            color: rgb(0.72, 0.11, 0.11),
+          });
+        } else if (ann.type === "signature" || ann.type === "initial") {
+          if (ann.value.startsWith("data:image/")) {
+            const imgBytes = await (await fetch(ann.value)).arrayBuffer();
+            const embeddedPng = await pdfDoc.embedPng(imgBytes);
+            const isInitial = ann.type === "initial";
+            page.drawImage(embeddedPng, {
+              x: xPt,
+              y: yPt - (isInitial ? 35 : 45) * 0.5,
+              width: isInitial ? 65 : 120,
+              height: isInitial ? 35 : 45,
+            });
+          }
         }
       }
 
