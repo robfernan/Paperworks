@@ -1,6 +1,6 @@
 /**
  * Paperworks Chrome Extension - Content Script
- * Intercepts PDF views in the browser and injects a Form Simplicity editor banner.
+ * Intercepts PDF views in the browser and injects a Paperworks PDF editor banner.
  */
 
 (function initPaperworksContentScript() {
@@ -45,7 +45,7 @@
     <div style="display: flex; align-items: center; gap: 8px;">
       <span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; background: #2563eb; color: #fff; border-radius: 4px; font-weight: bold; font-size: 11px;">P</span>
       <span style="font-weight: 600; color: #ffffff;">Paperworks</span>
-      <span style="color: #94a3b8; font-size: 12px;">Form Simplicity Editor</span>
+      <span style="color: #94a3b8; font-size: 12px;">PDF Pro Editor</span>
     </div>
     <div style="display: flex; align-items: center; gap: 6px; margin-left: 6px;">
       <button id="pw-open-btn" style="

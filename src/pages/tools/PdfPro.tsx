@@ -58,7 +58,7 @@ const PdfPro = () => {
   const [currentPage, setCurrentPage] = React.useState<number>(1);
   const [scale, setScale] = React.useState<number>(1.0);
 
-  // Form Simplicity Tools & Controls
+  // Form Tools & Controls
   const [activeTool, setActiveTool] = React.useState<ToolMode>("select");
   const [baselineAlignmentEnabled, setBaselineAlignmentEnabled] = React.useState(true);
   const [autoShrinkEnabled, setAutoShrinkEnabled] = React.useState(true);
@@ -241,7 +241,7 @@ const PdfPro = () => {
     }
   };
 
-  // Load Pre-populated Form Simplicity Sample Contract
+  // Load Pre-populated Sample Document
   const loadSampleContract = async () => {
     setIsProcessing(true);
     try {
@@ -395,7 +395,7 @@ const PdfPro = () => {
       downloadLink.href = downloadUrl;
       const outName = fileName
         ? fileName.replace(/\.pdf$/i, "-flattened.pdf")
-        : "form-simplicity-flattened.pdf";
+        : "document-flattened.pdf";
       downloadLink.download = outName;
       document.body.appendChild(downloadLink);
       downloadLink.click();
@@ -540,7 +540,7 @@ const PdfPro = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 pb-4 border-b">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Form Simplicity Editor</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">PDF Pro Editor</h1>
             <span className="text-[11px] font-semibold uppercase px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
               MV3 Interceptor
             </span>
@@ -683,7 +683,7 @@ const PdfPro = () => {
 
         {/* Center / Editor Canvas Workspace */}
         <div className="flex flex-col flex-1 min-w-0">
-          {/* Top Form Simplicity Toolbar */}
+          {/* Top PDF Form Toolbar */}
           <PdfToolbar
             activeTool={activeTool}
             onSelectTool={setActiveTool}
